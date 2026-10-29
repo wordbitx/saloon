@@ -1,0 +1,486 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── WordbitX Premium Design Tokens: Light Mode Default ── */
+:root,
+:root[data-theme="light"],
+html.light {
+  --bg: #f8fafc;
+  --bg-gradient-start: #f8fafc;
+  --bg-gradient-end: #edf5ef;
+  --surface: #ffffff;
+  --surface-raised: #f8fafc;
+  --surface-soft: #f0fdf4;
+  --surface-hover: #eaf8ee;
+  --line: rgba(5, 39, 103, 0.08);
+  --line-strong: rgba(28, 168, 48, 0.22);
+  --text: #052767;
+  --text-heading: #031844;
+  --muted: #52637a;
+  --muted-2: #8494a8;
+  --primary: #1ca830;
+  --primary-dark: #158a28;
+  --primary-light: #22c55e;
+  --mint: #15803d;
+  --navy: #052767;
+  --navy-dark: #021233;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --shadow-sm: 0 2px 8px rgba(5, 39, 103, 0.04);
+  --shadow: 0 14px 38px rgba(5, 39, 103, 0.08);
+  --shadow-lg: 0 24px 50px rgba(5, 39, 103, 0.12);
+  --gradient-brand: linear-gradient(135deg, #1ca830 0%, #158a28 100%);
+  --gradient-navy: linear-gradient(135deg, #052767 0%, #021233 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 244, 0.8) 100%);
+  --gradient-card: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"],
+html.dark {
+  --bg: #030814;
+  --bg-gradient-start: #030814;
+  --bg-gradient-end: #05142b;
+  --surface: #050d21;
+  --surface-raised: #071531;
+  --surface-soft: #0a1b3d;
+  --surface-hover: #0c2047;
+  --line: rgba(159, 221, 168, 0.14);
+  --line-strong: rgba(97, 209, 113, 0.28);
+  --text: #f0f6f4;
+  --text-heading: #ffffff;
+  --muted: #9baabe;
+  --muted-2: #6e819c;
+  --primary: #1ca830;
+  --primary-dark: #158a28;
+  --primary-light: #61d171;
+  --mint: #9fdda8;
+  --navy: #0a2558;
+  --navy-dark: #020b1c;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 28px 60px rgba(0, 0, 0, 0.45);
+  --gradient-brand: linear-gradient(135deg, #1ca830 0%, #126d21 100%);
+  --gradient-navy: linear-gradient(135deg, #0a2558 0%, #030a1c 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(7, 21, 49, 0.95) 0%, rgba(5, 13, 33, 0.8) 100%);
+  --gradient-card: linear-gradient(180deg, #050d21 0%, #071531 100%);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-width: 320px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Typography & Headings ──
+   Colour is intentionally NOT forced here: headings inside dark/navy panels
+   must be able to inherit white text. Components set their own colour. */
+h1, h2, h3, h4,
+.tight {
+  letter-spacing: -0.022em;
+}
+h1:not([class*="text-"]),
+h2:not([class*="text-"]),
+h3:not([class*="text-"]),
+h4:not([class*="text-"]) {
+  color: var(--text-heading);
+}
+
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+::selection {
+  background: rgba(28, 168, 48, 0.25);
+  color: var(--primary);
+}
+
+/* ── Gradients & Glassmorphism ── */
+.gradient-text {
+  background: linear-gradient(135deg, #052767 0%, #0a4ac2 50%, #1ca830 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+:root.dark .gradient-text,
+.dark .gradient-text {
+  background: linear-gradient(135deg, #9fdda8 0%, #61d171 55%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-hero-glow {
+  background: radial-gradient(circle at 15% 20%, rgba(28, 168, 48, 0.08) 0%, transparent 45%),
+              radial-gradient(circle at 85% 15%, rgba(5, 39, 103, 0.09) 0%, transparent 50%),
+              radial-gradient(circle at 50% 80%, rgba(34, 197, 94, 0.06) 0%, transparent 60%);
+}
+
+.gradient-emerald {
+  background: linear-gradient(135deg, #1ca830 0%, #16a34a 50%, #15803d 100%);
+}
+
+.gradient-badge {
+  background: linear-gradient(135deg, rgba(28, 168, 48, 0.12) 0%, rgba(5, 39, 103, 0.06) 100%);
+  border: 1px solid rgba(28, 168, 48, 0.25);
+}
+
+.card-luxury {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.card-luxury:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+  border-color: var(--line-strong);
+}
+
+/* ── Top Scroll Progress Bar ── */
+.scroll-progress {
+  background: var(--primary);
+  height: 3px;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  transform-origin: left center;
+  z-index: 100;
+}
+
+/* ── Status Pulse Dot ── */
+.pulse-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: var(--primary);
+  border-radius: 50%;
+}
+
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary);
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ── Ripple Host ── */
+.ripple-btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.ripple-btn:active {
+  transform: scale(0.98);
+}
+
+/* ── Ultra-Realistic iPhone 16 Pro Simulator Frame ── */
+.iphone-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.iphone-shell {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 50%, #020617 100%);
+  border: 4px solid #334155;
+  border-radius: 54px;
+  box-shadow: 0 30px 70px -15px rgba(5, 39, 103, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.15) inset, 0 10px 20px rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  position: relative;
+  width: 350px;
+  max-width: 100%;
+}
+
+.iphone-side-button {
+  background: #334155;
+  position: absolute;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.iphone-side-button-action {
+  border-radius: 3px 0 0 3px;
+  height: 22px;
+  left: -6px;
+  top: 85px;
+  width: 4px;
+}
+
+.iphone-side-button-volume-up {
+  border-radius: 3px 0 0 3px;
+  height: 40px;
+  left: -6px;
+  top: 120px;
+  width: 4px;
+}
+
+.iphone-side-button-volume-down {
+  border-radius: 3px 0 0 3px;
+  height: 40px;
+  left: -6px;
+  top: 172px;
+  width: 4px;
+}
+
+.iphone-side-button-power {
+  border-radius: 0 3px 3px 0;
+  height: 64px;
+  right: -6px;
+  top: 135px;
+  width: 4px;
+}
+
+.iphone-screen {
+  background: #EFEAE2;
+  border-radius: 44px;
+  display: flex;
+  flex-direction: column;
+  height: 650px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.iphone-statusbar {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 22px 4px;
+  position: relative;
+  z-index: 20;
+  background: #052767;
+  color: #ffffff;
+}
+
+.iphone-time {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.iphone-dynamic-island {
+  background: #000000;
+  border-radius: 16px;
+  height: 25px;
+  left: 50%;
+  position: absolute;
+  top: 7px;
+  transform: translateX(-50%);
+  width: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.iphone-dynamic-island .camera-lens {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #0a1128;
+  border: 1px solid #1e293b;
+  box-shadow: inset 0 0 2px #38bdf8;
+}
+
+.iphone-dynamic-island .sensor-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #111827;
+}
+
+.iphone-status-icons {
+  align-items: center;
+  color: #ffffff;
+  display: flex;
+  gap: 5px;
+}
+
+.iphone-app {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.iphone-home-indicator {
+  background: #0f172a;
+  border-radius: 3px;
+  bottom: 6px;
+  height: 4px;
+  left: 50%;
+  opacity: 0.4;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 120px;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* ── Chat Messages Inside Simulator ── */
+.message-bubble {
+  border-radius: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 86%;
+  padding: 10px 13px;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  animation: messageIn 0.22s ease-out;
+}
+
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg-customer {
+  align-self: flex-start;
+  background: #ffffff;
+  color: #0f172a;
+  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.msg-assistant {
+  align-self: flex-end;
+  background: #15803d;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.msg-owner {
+  align-self: flex-end;
+  background: #052767;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+/* ── Typing Animation Dots ── */
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  width: fit-content;
+}
+
+.typing-dot {
+  width: 5px;
+  height: 5px;
+  background-color: #15803d;
+  border-radius: 50%;
+  animation: typingBounce 1.2s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ── Sample Badges ── */
+.sample-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+:root[data-theme="dark"] .sample-stamp {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* ── Ticker Animation ── */
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker 32s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.25);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.4);
+}
