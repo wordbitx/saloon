@@ -48,11 +48,11 @@ export default function Navbar() {
   }, []);
 
   const selectTab = (tab: ViewTab) => {
-    // The dashboard is a signed-in workspace, so a fresh visit asks for a login.
+    // Dashboard is the open preview; only the admin workspace asks for a login.
     if (tab === "dashboard") {
       setMoreOpen(false);
       setMobileMenuOpen(false);
-      router.push("/admin");
+      router.push("/dashboard");
       return;
     }
     setActiveTab(tab);

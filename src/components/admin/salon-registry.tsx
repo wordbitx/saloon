@@ -91,7 +91,7 @@ export default function SalonRegistry() {
     const saved: RegisteredSalon = { ...draft, status: "submitted" };
     setSalons((current) => (exists ? current.map((s) => (s.id === saved.id ? saved : s)) : [saved, ...current]));
     setSelectedId(saved.id);
-    showToast(`SAMPLE: ${saved.salonName} ka profile save ho gaya (${saved.images.length} image(s)).`);
+    showToast(`${saved.salonName} ka profile save ho gaya (${saved.images.length} image(s)).`);
   };
 
   const registerNewSalon = () => {
@@ -119,7 +119,7 @@ export default function SalonRegistry() {
     setSalons((current) => [fresh, ...current]);
     setSelectedId(fresh.id);
     setDraft(fresh);
-    showToast("SAMPLE: Naya salon draft ban gaya — details aur images bhar dein.");
+    showToast("Naya salon draft ban gaya — details aur images bhar dein.");
   };
 
   return (

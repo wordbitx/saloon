@@ -7,12 +7,6 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
   },
-  async redirects() {
-    return [
-      // The old public sample dashboard is now the signed-in admin workspace.
-      { source: "/dashboard", destination: "/admin", permanent: false },
-    ];
-  },
 };
 
 export default nextConfig;

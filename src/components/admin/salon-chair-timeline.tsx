@@ -286,7 +286,7 @@ export default function SalonChairTimeline({
                 <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
                   &ldquo;Aap ka {conflictSlot.time} slot {conflictSlot.stylist} ke sath abhi book hai. Koi aur same-time slot chahiye to confirm kar lein.&rdquo;
                 </p>
-                <button onClick={() => showToast("SAMPLE: WhatsApp message copy ho gaya — real send nahi hua.")} className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-3 py-2 text-[10px] font-bold text-white hover:bg-[#178e29]">
+                <button onClick={() => showToast("WhatsApp message copy ho gaya — real send nahi hua.")} className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-3 py-2 text-[10px] font-bold text-white hover:bg-[#178e29]">
                   <MessageCircle size={12} /> WhatsApp message copy karein
                 </button>
               </div>
@@ -295,7 +295,7 @@ export default function SalonChairTimeline({
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">In slots mein book kar sakte hain</span>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {conflictSlot.alternatives.slice(0, 6).map((alt) => (
-                      <button key={alt} onClick={() => { setConflictSlot(null); showToast(`SAMPLE: ${alt} slot select kar liya — booking form mein add karein.`); }} className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <button key={alt} onClick={() => { setConflictSlot(null); showToast(`${alt} slot select kar liya — booking form mein add karein.`); }} className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                         <Check size={11} /> {alt}
                       </button>
                     ))}

@@ -74,7 +74,7 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
     <div className="space-y-5">
       {/* Hero — live headline and stat tiles */}
       <section className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-lg shadow-blue-950/10 dark:border-slate-800">
-        <Image src="/images/salon-interior-hero.jpg" alt="Fictional Glow Salon interior (sample imagery)" fill priority sizes="(max-width: 1024px) 100vw, 1100px" className="object-cover" />
+        <Image src="/images/salon-interior-hero.jpg" alt="Salon interior (sample imagery)" fill priority sizes="(max-width: 1024px) 100vw, 1100px" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#031844]/93 via-[#052767]/78 to-[#052767]/30" />
         <div className="relative z-10 grid gap-6 p-5 text-white sm:p-6 lg:grid-cols-[1fr_300px] lg:items-center">
           <div className="min-w-0">

@@ -244,7 +244,7 @@ export default function SalonCustomers() {
               </div>
 
               <p className="rounded-lg bg-amber-50 p-2.5 text-[10px] leading-relaxed text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                SAMPLE DATA · {settings.name}. Contact numbers masked; no WhatsApp or SMS is sent from this demo.
+                Sample register · {settings.name}. Contact numbers masked; no WhatsApp or SMS is sent from this demo.
               </p>
             </div>
           </div>
