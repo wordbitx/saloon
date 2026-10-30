@@ -17,9 +17,9 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between px-4 sm:px-6">
             <Link href="/admin/login" className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#052767] to-[#1CA830] text-xs font-extrabold text-white">W</span>
-              <span><strong className="block text-sm font-extrabold text-[#052767] dark:text-white">Wordbit<span className="text-[#1CA830]">X</span></strong><span className="block text-[9px] leading-none text-slate-500">Admin workspace preview</span></span>
+              <span><strong className="block text-sm font-extrabold text-[#052767] dark:text-white">Wordbit<span className="text-[#1CA830]">X</span></strong><span className="block text-[9px] leading-none text-slate-500">Salon admin workspace</span></span>
             </Link>
-            <div className="flex items-center gap-3"><span className="hidden items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300 sm:inline-flex"><ShieldCheck size={12}/> Demo mode</span><Link href="/" className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"><ArrowLeft size={13}/> Public demo</Link></div>
+            <div className="flex items-center gap-3"><span className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 sm:inline-flex"><ShieldCheck size={12}/> Secure login</span><Link href="/" className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"><ArrowLeft size={13}/> Public site</Link></div>
           </div>
         </header>
         <main>{children}</main>

@@ -4,6 +4,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -41,7 +42,7 @@ interface SalonContextType {
   findSlotConflict: (stylistName: string, date: string, time: string, excludeId?: string) => Booking | null;
   /** Edits any booking field (incl. custom price). Blocks a slot already taken by another client. */
   updateBooking: (bookingId: string, patch: Partial<Booking>) => { ok: boolean; message?: string };
-  /** Permanently removes a booking from the sample register. */
+  /** Permanently removes a booking from the register. */
   deleteBooking: (bookingId: string) => void;
   /** Human readable slot state for UI: free | booked with details. */
   checkSlotAvailability: (
@@ -94,7 +95,14 @@ export function SalonProvider({
   initialTab?: ViewTab;
 }) {
   const [activeTab, setActiveTab] = useState<ViewTab>(initialTab);
-  const [settings, setSettings] = useState<SalonSettings>(INITIAL_SALON_SETTINGS);
+  const [settingsState, setSettings] = useState<SalonSettings>(INITIAL_SALON_SETTINGS);
+  // The salon name/area are owner-editable and intentionally blank by default, so
+  // every consumer gets a readable placeholder until the profile is filled in.
+  const settings = useMemo<SalonSettings>(() => ({
+    ...settingsState,
+    name: settingsState.name.trim() || "Your salon",
+    area: settingsState.area.trim() || settingsState.city,
+  }), [settingsState]);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(INITIAL_WAITLIST);
   const [repeatCustomers] = useState<RepeatCustomer[]>(INITIAL_REPEAT_CUSTOMERS);
@@ -170,14 +178,14 @@ export function SalonProvider({
     setSettings(INITIAL_SALON_SETTINGS);
     setBookings(INITIAL_BOOKINGS);
     setWaitlist(INITIAL_WAITLIST);
-    showToast("Glow Salon sample settings reset to defaults.");
+    showToast("Salon profile reset to the default workspace values.");
   };
 
   const addBooking = (booking: Booking) => {
     const conflict = findSlotConflict(booking.stylistName, booking.date, booking.time);
     if (conflict) {
       showToast(
-        `SAMPLE: ${booking.date} ${booking.time} already booked hai (${conflict.customerName}). WhatsApp par contact karein ya koi aur slot chunein.`
+        `${booking.date} ${booking.time} already booked hai (${conflict.customerName}). WhatsApp par contact karein ya koi aur slot chunein.`
       );
       return;
     }
@@ -198,10 +206,10 @@ export function SalonProvider({
         )
       );
       showToast(
-        `SAMPLE: Vacated slot offered to ${nextWaitlistEntry.customerName}. Booking tab confirm hogi jab customer accept karega.`
+        `Vacated slot offered to ${nextWaitlistEntry.customerName}. Booking tab confirm hogi jab customer accept karega.`
       );
     } else {
-      showToast("SAMPLE: Booking cancelled. Is service ke liye waitlist par koi customer nahi hai.");
+      showToast("Booking cancelled. Is service ke liye waitlist par koi customer nahi hai.");
     }
   };
 
@@ -209,7 +217,7 @@ export function SalonProvider({
     const entry = waitlist.find((item) => item.id === entryId);
     if (!entry || entry.status !== "waiting") return;
     setWaitlist((prev) => prev.map((item) => item.id === entryId ? { ...item, status: "offered" } : item));
-    showToast(`SAMPLE: ${entry.serviceName} ka available slot ${entry.customerName} ko offer kiya gaya. WhatsApp send nahi hua.`);
+    showToast(`${entry.serviceName} ka available slot ${entry.customerName} ko offer kiya gaya. WhatsApp send nahi hua.`);
   };
 
   const confirmWaitlistBooking = (entryId: string) => {
@@ -224,7 +232,7 @@ export function SalonProvider({
       serviceId: service?.id,
       serviceName: entry.serviceName,
       stylistName: settings.stylists[0]?.name || "Hina Malik",
-      branchName: settings.branches[0]?.name || "DHA Phase 5",
+      branchName: settings.branches[0]?.name || "Main branch",
       date: entry.preferredDate,
       time: entry.preferredTime,
       status: "confirmed",
@@ -232,11 +240,11 @@ export function SalonProvider({
       channel: "waitlist",
       createdAt: new Date().toISOString(),
       isRecovered: true,
-      notes: "SAMPLE DATA: waitlist customer acceptance simulated by owner.",
+      notes: "Waitlist slot confirmed by the owner.",
     };
     setBookings((prev) => [booking, ...prev]);
     setWaitlist((prev) => prev.map((item) => item.id === entryId ? { ...item, status: "booked" } : item));
-    showToast(`SAMPLE: ${entry.customerName} ne waitlist slot accept kiya. Booking dashboard mein add hui.`);
+    showToast(`${entry.customerName} ne waitlist slot accept kiya. Booking dashboard mein add hui.`);
   };
 
   const completeBooking = (bookingId: string) => {
@@ -244,7 +252,7 @@ export function SalonProvider({
     setBookings((prev) =>
       prev.map((b) => (b.id === bookingId ? { ...b, status: "completed" } : b))
     );
-    showToast(`SAMPLE: ${target?.customerName || "Customer"} ki service complete mark hui. Review request preview tayyar hai — WhatsApp message send nahi hua.`);
+    showToast(`${target?.customerName || "Customer"} ki service complete mark hui. Review request preview tayyar hai — WhatsApp message send nahi hua.`);
   };
 
   const updateBooking = (bookingId: string, patch: Partial<Booking>) => {

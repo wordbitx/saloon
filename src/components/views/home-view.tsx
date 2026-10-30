@@ -27,6 +27,8 @@ import {
   Zap,
 } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
+import HomePhoneDemo from "@/components/demo/home-phone-demo";
+import { useRouter } from "next/navigation";
 import { WORDBITX_COMPANY } from "@/lib/constants";
 
 export default function HomeView() {
@@ -35,7 +37,9 @@ export default function HomeView() {
     recoveredCount,
     recoveredRevenuePKR,
     openConsultationWithPlan,
+    settings,
   } = useSalon();
+  const router = useRouter();
 
   const comparisonRows = [
     {
@@ -140,7 +144,8 @@ export default function HomeView() {
         {/* Subtle radial glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 max-w-4xl h-96 bg-gradient-to-b from-[#1CA830]/10 via-[#052767]/5 to-transparent blur-3xl pointer-events-none -z-10" />
 
-        <div className="text-center max-w-4xl mx-auto space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-8 items-center">
+        <div className="space-y-6">
           <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/10 via-[#052767]/10 to-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-[#052767] dark:text-[#9fdda8] shadow-xs">
             <span className="w-2 h-2 rounded-full bg-[#1CA830] animate-pulse" />
             <span className="font-bold text-[#1CA830]">WordbitX</span>
@@ -160,7 +165,7 @@ export default function HomeView() {
             Banayein.
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
             Salon ke har missed WhatsApp message aur missed call par foran jawab, booking offer,
             reminder, aur cancellation par waitlist backfill. Owner ko roz aik list:{" "}
             <strong className="text-[#052767] dark:text-white">
@@ -168,7 +173,7 @@ export default function HomeView() {
             </strong>
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3.5 pt-2">
             <button
               onClick={() => setActiveTab("simulator")}
               className="px-6 py-3.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-[#1CA830] hover:bg-[#178e29] shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 active:scale-95"
@@ -179,7 +184,7 @@ export default function HomeView() {
             </button>
 
             <button
-              onClick={() => setActiveTab("dashboard")}
+              onClick={() => router.push("/dashboard")}
               className="px-5 py-3.5 rounded-xl font-bold text-xs sm:text-sm text-[#052767] dark:text-white bg-white dark:bg-[#050d21] border border-slate-300 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors shadow-xs flex items-center gap-2"
             >
               <LayoutDashboard className="w-4 h-4 text-[#1CA830]" />
@@ -187,12 +192,18 @@ export default function HomeView() {
             </button>
           </div>
 
-          <div className="pt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+          <div className="pt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center lg:justify-start gap-2">
             <ShieldCheck className="w-4 h-4 text-[#1CA830]" />
             <span>
-              Phase 1 sellable demo · Fictional &ldquo;Glow Salon, Lahore&rdquo; · Labelled Sample Data
+              Phase 1 sellable demo · Sample salon data · Demo dashboard par login zaroori nahi
             </span>
           </div>
+        </div>
+
+        {/* Phone demo column — desktop: right of text, mobile: below */}
+        <div className="flex justify-center lg:justify-end order-2 lg:order-2">
+          <HomePhoneDemo />
+        </div>
         </div>
 
         {/* Live Metrics Proof Bar */}
@@ -232,6 +243,50 @@ export default function HomeView() {
         </div>
       </section>
 
+      {/* WhatsApp phone demo — auto-running conversation so a visitor immediately sees the flow */}
+      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div className="order-2 lg:order-1 space-y-4">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <Sparkles size={13} /> Live conversation demo
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-[#052767] dark:text-white leading-tight">
+              Phone par <span className="gradient-text">missed call</span> aaye, phone pe
+              booking pakki.
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Yeh phone wahi chalega jo salon owner ke clients use karte hain. Missed call aaye →
+              agle 4 second mein WhatsApp par jawab bhej diya jata hai → puchna hai to sawal →
+              booking confirm, reminder, aur raat ke messages ka bhi jawab. Demo auto-chala
+              diya gaya hai — puchna hai to replay par click karein.
+            </p>
+            <ul className="space-y-2.5 text-sm text-slate-700 dark:text-slate-200">
+              {[
+                "Ghanti miss ho jaye to khud WhatsApp pe bhej diya jawab",
+                "Service ke rates, duration aur stylist confirm karwa lena",
+                "Booking ka confirmation + reminder message",
+                "Raat ke gharon mein client ke sawalon ka jawab",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-[#1CA830] shrink-0 mt-0.5" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => setActiveTab("simulator")}
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#052767] px-5 py-3 text-xs font-bold text-white hover:bg-[#0a3582] transition-colors"
+            >
+              <Bot size={16} /> Apni baat likhe kar dekhein
+              <ArrowRight size={14} />
+            </button>
+          </div>
+          <div className="order-1 lg:order-2 flex justify-center lg:justify-end bg-gradient-to-br from-slate-100 to-slate-50 rounded-3xl border border-slate-200 dark:from-[#071531] dark:to-[#030814] dark:border-slate-800 p-8 sm:p-12">
+            <HomePhoneDemo />
+          </div>
+        </div>
+      </section>
+
       {/* Salon gallery — what the recovered salon floor looks like */}
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -259,7 +314,7 @@ export default function HomeView() {
                 </li>
               ))}
             </ul>
-            <button onClick={() => setActiveTab("dashboard")} className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#052767] px-5 py-3 text-xs font-bold text-white hover:bg-[#0a3582] transition-colors">
+            <button onClick={() => router.push("/dashboard")} className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#052767] px-5 py-3 text-xs font-bold text-white hover:bg-[#0a3582] transition-colors">
               <LayoutDashboard size={16} /> Dashboard mein chair timeline dekhein
               <ArrowRight size={14} />
             </button>
@@ -284,13 +339,13 @@ export default function HomeView() {
                 <img src="/images/salon-facial-treatment.jpg" alt="Client receiving a facial treatment in a salon treatment room" className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
               </figure>
               <div className="col-span-2 row-span-1 rounded-2xl bg-[#052767] text-white p-4 flex flex-col justify-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">SAMPLE SALON</span>
-                <strong className="mt-1 text-base font-extrabold">Glow Salon, Lahore</strong>
-                <span className="mt-1 text-[11px] text-blue-100/80 leading-relaxed">DHA Phase 5 · Gulberg III · Johar Town</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">SALON</span>
+                <strong className="mt-1 text-base font-extrabold">{settings.name}</strong>
+                <span className="mt-1 text-[11px] text-blue-100/80 leading-relaxed">{settings.area} · {settings.branches.length} branches</span>
               </div>
             </div>
             <p className="mt-3 text-[10px] text-slate-400">
-              Sample imagery for the fictional Glow Salon demo — no real salon photographs are used.
+              Sample imagery for the demo — no real salon photographs are used.
             </p>
           </div>
         </div>

@@ -35,7 +35,7 @@ export interface RegisteredSalon {
 export const SAMPLE_REGISTERED_SALONS: RegisteredSalon[] = [
   {
     id: "salon-reg-glow-dha",
-    salonName: "Glow Salon, Lahore",
+    salonName: "Your salon",
     ownerName: "Demo Owner",
     phone: "0300 0000000",
     whatsapp: "0300 0000000",

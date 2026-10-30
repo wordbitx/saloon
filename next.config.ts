@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  // Allow the sandbox preview host to talk to the dev server (HMR requests).
+  allowedDevOrigins: ["*.e2b.app"],
+  // Salon gallery images are static files under /public/images.
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
+};
 
 export default nextConfig;

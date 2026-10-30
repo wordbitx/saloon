@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
@@ -29,6 +30,7 @@ const mainItems: { id: ViewTab; label: string; icon: typeof Home | typeof Settin
 
 export default function Navbar() {
   const { activeTab, setActiveTab, theme, setTheme } = useSalon();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -46,6 +48,13 @@ export default function Navbar() {
   }, []);
 
   const selectTab = (tab: ViewTab) => {
+    // Dashboard is the open preview; only the admin workspace asks for a login.
+    if (tab === "dashboard") {
+      setMoreOpen(false);
+      setMobileMenuOpen(false);
+      router.push("/dashboard");
+      return;
+    }
     setActiveTab(tab);
     setMoreOpen(false);
     setMobileMenuOpen(false);

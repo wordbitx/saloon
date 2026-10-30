@@ -24,20 +24,22 @@ export const WORDBITX_COMPANY = {
 };
 
 export const INITIAL_SALON_SETTINGS: SalonSettings = {
-  id: "salon-lahore-glow-dha",
-  name: "Glow Salon, Lahore",
+  id: "salon-lahore-main",
+  // Left blank on purpose: the owner sets the real salon name, area, address and
+  // branches in Settings → Salon profile. The UI shows a neutral placeholder until then.
+  name: "",
   city: "Lahore",
-  area: "DHA Phase 5 / Gulberg III",
-  address: "Plot 42-C, Sector CCA, DHA Phase 5, Lahore",
-  phone: "+92 300 0000010",
+  area: "",
+  address: "",
+  phone: "",
   openingTime: "11:00 AM",
   closingTime: "09:00 PM",
   offDays: ["Monday"],
   greetingMessage:
-    "Assalam-o-Alaikum! Glow Salon DHA Phase 5 mein khush-amdeed. Main aap ki appointment aur service charges mein foran madad kar sakti hoon.",
+    "Assalam-o-Alaikum! Salon mein khush-amdeed. Main aap ki appointment, service charges aur timings ke liye foran madad kar sakti hoon.",
   repeatGreetingTemplate:
     "Walaikum Assalam {name}! Last time aap ne {lastService} karwaya tha — is baar bhi wohi schedule karein ya koi nayi service leni hai?",
-  googleReviewUrl: "https://g.page/r/glowsalon-lahore-review",
+  googleReviewUrl: "",
   services: [
     {
       id: "srv-1",
@@ -152,18 +154,18 @@ export const INITIAL_SALON_SETTINGS: SalonSettings = {
   branches: [
     {
       id: "br-1",
-      name: "DHA Phase 5 (Flagship)",
-      area: "Sector CCA, DHA Phase 5, Lahore",
+      name: "Main branch",
+      area: "Lahore",
     },
     {
       id: "br-2",
-      name: "Gulberg III Branch",
-      area: "Near M.M. Alam Road, Gulberg III, Lahore",
+      name: "Branch 2",
+      area: "Lahore",
     },
     {
       id: "br-3",
-      name: "Johar Town Branch",
-      area: "G-1 Market, Johar Town, Lahore",
+      name: "Branch 3",
+      area: "Lahore",
     },
   ],
   activeBranchId: "br-1",
@@ -172,7 +174,7 @@ export const INITIAL_SALON_SETTINGS: SalonSettings = {
 export const INITIAL_REPEAT_CUSTOMERS: RepeatCustomer[] = [
   {
     id: "cust-1",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     name: "Ayesha Khan",
     phone: "+92 300 0000011",
     lastVisitDate: "2026-10-12",
@@ -183,7 +185,7 @@ export const INITIAL_REPEAT_CUSTOMERS: RepeatCustomer[] = [
   },
   {
     id: "cust-2",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     name: "Fatima Zahra",
     phone: "+92 300 0000012",
     lastVisitDate: "2026-10-19",
@@ -194,7 +196,7 @@ export const INITIAL_REPEAT_CUSTOMERS: RepeatCustomer[] = [
   },
   {
     id: "cust-3",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     name: "Mahnoor Tariq",
     phone: "+92 300 0000013",
     lastVisitDate: "2026-09-28",
@@ -208,7 +210,7 @@ export const INITIAL_REPEAT_CUSTOMERS: RepeatCustomer[] = [
 export const INITIAL_WAITLIST: WaitlistEntry[] = [
   {
     id: "wl-1",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     customerName: "Komal Rizvi",
     customerPhone: "+92 300 0000014",
     serviceName: "HydraFacial Deep Glow Session",
@@ -219,7 +221,7 @@ export const INITIAL_WAITLIST: WaitlistEntry[] = [
   },
   {
     id: "wl-2",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     customerName: "Sidra Farooq",
     customerPhone: "+92 300 0000015",
     serviceName: "Balayage & Hair Gloss Treatment",
@@ -233,14 +235,14 @@ export const INITIAL_WAITLIST: WaitlistEntry[] = [
 export const INITIAL_BOOKINGS: Booking[] = [
   {
     id: "BK-9401",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     customerName: "Ayesha Khan",
     customerPhone: "+92 300 0000011",
     serviceId: "srv-1",
     serviceName: "Balayage & Hair Gloss Treatment",
     stylistId: "sty-1",
     stylistName: "Hina Malik",
-    branchName: "DHA Phase 5 (Flagship)",
+    branchName: "Main branch",
     date: "Today",
     time: "04:00 PM",
     status: "confirmed",
@@ -252,14 +254,14 @@ export const INITIAL_BOOKINGS: Booking[] = [
   },
   {
     id: "BK-9402",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     customerName: "Fatima Zahra",
     customerPhone: "+92 300 0000012",
     serviceId: "srv-2",
     serviceName: "HydraFacial Deep Glow Session",
     stylistId: "sty-3",
     stylistName: "Zainab Bilal",
-    branchName: "Gulberg III Branch",
+    branchName: "Branch 2",
     date: "Today",
     time: "02:00 PM",
     status: "confirmed",
@@ -271,14 +273,14 @@ export const INITIAL_BOOKINGS: Booking[] = [
   },
   {
     id: "BK-9403",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     customerName: "Dr. Rabia Qureshi",
     customerPhone: "+92 300 0000016",
     serviceId: "srv-3",
     serviceName: "Signature Haircut & Ceramic Blowdry",
     stylistId: "sty-2",
     stylistName: "Sana Tariq",
-    branchName: "DHA Phase 5 (Flagship)",
+    branchName: "Main branch",
     date: "Today",
     time: "05:30 PM",
     status: "confirmed",
@@ -290,14 +292,14 @@ export const INITIAL_BOOKINGS: Booking[] = [
   },
   {
     id: "BK-9404",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     customerName: "Mariam Hashmi",
     customerPhone: "+92 300 0000017",
     serviceId: "srv-5",
     serviceName: "Signature Bridal Makeup (Barat/Walima)",
     stylistId: "sty-4",
     stylistName: "Aliya Noor",
-    branchName: "Gulberg III Branch",
+    branchName: "Branch 2",
     date: "31 Oct",
     time: "01:00 PM",
     status: "confirmed",
@@ -309,13 +311,13 @@ export const INITIAL_BOOKINGS: Booking[] = [
   },
   {
     id: "BK-9405",
-    salonId: "salon-lahore-glow-dha",
+    salonId: "salon-lahore-main",
     customerName: "Sara Alvi",
     customerPhone: "+92 300 0000018",
     serviceId: "srv-4",
     serviceName: "Luxury Spa Mani & Pedi Combo",
     stylistName: "Sana Tariq",
-    branchName: "Johar Town Branch",
+    branchName: "Branch 3",
     date: "Today",
     time: "06:30 PM",
     status: "confirmed",

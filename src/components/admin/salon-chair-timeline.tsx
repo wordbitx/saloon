@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Armchair, Clock3, Coffee, Scissors, Sparkles, Droplets, Brush, Plus,
   MessageCircle, AlertTriangle, Check, CalendarDays, ChevronDown, Search,
@@ -43,15 +43,21 @@ export default function SalonChairTimeline({
 }) {
   const { settings, bookings, showToast } = useSalon();
 
-  // Only offer days that actually have data (+ Today as the default view).
-  const dayOptions = useMemo(() => {
-    const present = Array.from(new Set(bookings.map((booking) => booking.date)));
-    const ordered = ["Today", "Tomorrow", "Saturday"].filter((day) => present.includes(day));
-    const extra = present.filter((day) => !ordered.includes(day));
-    return ordered.length ? [...ordered, ...extra] : ["Today"];
-  }, [bookings]);
+  // Date picker: defaults to today, lets the owner navigate to any date (past/future).
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const [selectedDateISO, setSelectedDateISO] = useState(() => new Date().toISOString().split("T")[0]);
 
-  const [selectedDay, setSelectedDay] = useState("Today");
+  const formatDateLabel = (iso: string) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const picked = new Date(iso + "T00:00:00");
+    const diff = Math.round((picked.getTime() - today.getTime()) / 86400000);
+    if (diff === 0) return "Today";
+    if (diff === 1) return "Tomorrow";
+    if (diff === -1) return "Yesterday";
+    return picked.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  };
+
+  const selectedDay = formatDateLabel(selectedDateISO);
   const [expandRecords, setExpandRecords] = useState(true);
   const [recordQuery, setRecordQuery] = useState("");
   const [conflictSlot, setConflictSlot] = useState<{
@@ -122,7 +128,7 @@ export default function SalonChairTimeline({
             <span className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[.15em] text-emerald-700 dark:text-emerald-400">
               <Armchair size={12} /> Salon floor · chair schedule
             </span>
-            <h3 className="mt-1 text-base font-bold text-[#052767] dark:text-white">Chair timeline — kaunsi kursi kab khali hai</h3>
+            <h3 className="mt-1 text-base font-bold text-[#052767] dark:text-white">Chair timeline — har kursi ka schedule</h3>
             <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
               {settings.openingTime} se {settings.closingTime} tak. Har column aik stylist ki chair hai. Booked slot par click karein to duplicate-booking guard chalta hai.
             </p>
@@ -137,23 +143,21 @@ export default function SalonChairTimeline({
         {/* Day tabs + counters */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <span className="mr-1 shrink-0 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Day</span>
-            {dayOptions.map((day) => {
-              const count = bookings.filter((booking) => booking.date === day && booking.status !== "cancelled").length;
-              const active = selectedDay === day;
-              return (
-                <button
-                  key={day}
-                  onClick={() => setSelectedDay(day)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition ${
-                    active ? "bg-[#052767] text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  <CalendarDays size={11} /> {day}
-                  <span className={`rounded-full px-1.5 text-[9px] ${active ? "bg-white/20 text-white" : "bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"}`}>{count}</span>
-                </button>
-              );
-            })}
+            <button
+              onClick={() => dateInputRef.current?.click()}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              <CalendarDays size={11} /> {selectedDay}
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={selectedDateISO}
+              onChange={(event) => {
+                if (event.target.value) setSelectedDateISO(event.target.value);
+              }}
+              className="hidden"
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -161,7 +165,7 @@ export default function SalonChairTimeline({
               <Armchair size={12} /> {busyChairs}/{totalChairs} chairs busy
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              <Clock3 size={12} /> {emptySlots} slots khali
+              <Clock3 size={12} className="text-slate-500 dark:text-slate-400" /> {emptySlots} slots available
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
               {currency(dayValue)}
@@ -194,7 +198,7 @@ export default function SalonChairTimeline({
           {SLOT_TIMES.map((slot, rowIdx) => (
             <div key={slot} className={`grid ${rowIdx !== SLOT_TIMES.length - 1 ? "border-b border-slate-50 dark:border-slate-800/60" : ""}`} style={{ gridTemplateColumns: `92px repeat(${stylists.length}, minmax(0, 1fr))` }}>
               <div className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                <Clock3 size={11} className="text-slate-300 dark:text-slate-500" /> {slot}
+                <Clock3 size={11} className="text-slate-500 dark:text-slate-400" /> {slot}
               </div>
               {stylists.map((stylist) => {
                 const booking = getBookingFor(stylist.name, slot);
@@ -222,7 +226,7 @@ export default function SalonChairTimeline({
                 }
                 return (
                   <div key={stylist.id} className="border-l border-slate-50 px-1.5 py-1.5 dark:border-slate-800/60">
-                    <div className="flex h-[34px] items-center justify-center rounded-lg border border-dashed border-slate-200 text-[9px] font-semibold text-slate-400 dark:border-slate-700 dark:text-slate-500">Khali</div>
+                    <div className="flex h-[34px] items-center justify-center rounded-lg border border-dashed border-slate-200 text-[9px] font-semibold text-slate-400 dark:border-slate-700 dark:text-slate-500">Available</div>
                   </div>
                 );
               })}
@@ -286,7 +290,7 @@ export default function SalonChairTimeline({
                 <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
                   &ldquo;Aap ka {conflictSlot.time} slot {conflictSlot.stylist} ke sath abhi book hai. Koi aur same-time slot chahiye to confirm kar lein.&rdquo;
                 </p>
-                <button onClick={() => showToast("SAMPLE: WhatsApp message copy ho gaya — real send nahi hua.")} className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-3 py-2 text-[10px] font-bold text-white hover:bg-[#178e29]">
+                <button onClick={() => showToast("WhatsApp message copy ho gaya — real send nahi hua.")} className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-3 py-2 text-[10px] font-bold text-white hover:bg-[#178e29]">
                   <MessageCircle size={12} /> WhatsApp message copy karein
                 </button>
               </div>
@@ -295,7 +299,7 @@ export default function SalonChairTimeline({
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">In slots mein book kar sakte hain</span>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {conflictSlot.alternatives.slice(0, 6).map((alt) => (
-                      <button key={alt} onClick={() => { setConflictSlot(null); showToast(`SAMPLE: ${alt} slot select kar liya — booking form mein add karein.`); }} className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <button key={alt} onClick={() => { setConflictSlot(null); showToast(`${alt} slot select kar liya — booking form mein add karein.`); }} className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                         <Check size={11} /> {alt}
                       </button>
                     ))}

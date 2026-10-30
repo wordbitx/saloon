@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { ArrowRight, Banknote, CalendarDays, Clock3, Download, Gift, Inbox, MapPin, Plus, Sparkles, UserPlus, Wallet } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
+import { useAuth } from "@/context/auth-context";
 import SalonChairTimeline from "@/components/admin/salon-chair-timeline";
 import StylistWorkload from "@/components/admin/stylist-workload";
 import SalonServiceMix from "@/components/admin/salon-service-mix";
@@ -45,6 +46,7 @@ function SectionHead({ eyebrow, title, hint }: { eyebrow: string; title: string;
 
 export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWalkIn, onExportCsv, inbox, inboxPending }: Props) {
   const { settings, bookings, waitlist } = useSalon();
+  const { can } = useAuth();
   const metrics = overviewMetrics(bookings, waitlist);
   const categories = categorySummary(bookings, settings);
   const todayRows = bookings.filter((booking) => isActive(booking) && isToday(booking));
@@ -72,7 +74,7 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
     <div className="space-y-5">
       {/* Hero — live headline and stat tiles */}
       <section className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-lg shadow-blue-950/10 dark:border-slate-800">
-        <Image src="/images/salon-interior-hero.jpg" alt="Fictional Glow Salon interior (sample imagery)" fill priority sizes="(max-width: 1024px) 100vw, 1100px" className="object-cover" />
+        <Image src="/images/salon-interior-hero.jpg" alt="Salon interior (sample imagery)" fill priority sizes="(max-width: 1024px) 100vw, 1100px" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#031844]/93 via-[#052767]/78 to-[#052767]/30" />
         <div className="relative z-10 grid gap-6 p-5 text-white sm:p-6 lg:grid-cols-[1fr_300px] lg:items-center">
           <div className="min-w-0">
@@ -100,9 +102,9 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <button onClick={onWalkIn} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[10px] font-bold text-[#052767] hover:bg-blue-50"><UserPlus size={11} /> Walk-in add karein</button>
-              <button onClick={onAddBooking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-[10px] font-bold text-white hover:bg-white/20"><Plus size={11} /> Naya slot / booking</button>
-              <button onClick={onExportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-500/30"><Download size={11} /> CSV export</button>
+              {can("bookings.create") && <button onClick={onWalkIn} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[10px] font-bold text-[#052767] hover:bg-blue-50"><UserPlus size={11} /> Walk-in add karein</button>}
+              {can("bookings.create") && <button onClick={onAddBooking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-[10px] font-bold text-white hover:bg-white/20"><Plus size={11} /> Naya slot / booking</button>}
+              {can("reports.view") && <button onClick={onExportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-500/30"><Download size={11} /> CSV export</button>}
             </div>
           </div>
 
