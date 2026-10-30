@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, type FormEvent } from "react";
+import React, { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity, AlertTriangle, ArrowDownToLine, ArrowRight, Bell, Brush, CalendarDays, Check, CheckCircle2,
@@ -76,6 +76,17 @@ export default function AdminWorkspace({ demoMode = false }: { demoMode?: boolea
   const openDrill = (spec: DrillSpec) => setDrill(spec);
   const [newCustomer, setNewCustomer] = useState("");
   const [newServiceId, setNewServiceId] = useState(settings.services[0]?.id ?? "");
+  const [newDateISO, setNewDateISO] = useState(() => new Date().toISOString().split("T")[0]);
+  const newDateInputRef = useRef<HTMLInputElement>(null);
+  const formatDateLabel = (iso: string) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const picked = new Date(iso + "T00:00:00");
+    const diff = Math.round((picked.getTime() - today.getTime()) / 86400000);
+    if (diff === 0) return "Today";
+    if (diff === 1) return "Tomorrow";
+    if (diff === -1) return "Yesterday";
+    return picked.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  };
   const [newDate, setNewDate] = useState("Today");
   const [newTime, setNewTime] = useState("04:30 PM");
   const [newStaffId, setNewStaffId] = useState(settings.stylists[0]?.id ?? "");
@@ -227,8 +238,8 @@ export default function AdminWorkspace({ demoMode = false }: { demoMode?: boolea
     <div className="min-h-[72vh] overflow-hidden rounded-2xl border border-slate-200 bg-[#f8fafc] shadow-sm dark:border-slate-800 dark:bg-[#030814] lg:grid lg:grid-cols-[230px_minmax(0,1fr)]">
       <aside className="hidden border-r border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#050d21] lg:flex lg:flex-col">{nav}</aside>
       <div className="min-w-0">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-[#050d21] sm:px-6"><div className="flex items-center gap-2"><button onClick={()=>setMobileNavOpen((open)=>!open)} className="rounded-lg border border-slate-200 p-2 text-slate-600 dark:border-slate-700 dark:text-slate-300 lg:hidden" aria-label="Toggle admin navigation"><Menu size={16}/></button><span className="text-[10px] font-bold uppercase tracking-widest text-[#052767] dark:text-slate-300">{settings.name} · Admin workspace</span></div><div className="flex items-center gap-2">{demoMode || demo ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">Sample data</span> : <AccountMenu />}</div></div>
-        {mobileNavOpen && <div className="border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#050d21] lg:hidden">{nav}</div>}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-[#050d21] sm:px-6"><div className="flex items-center gap-2"><button onClick={()=>setMobileNavOpen((open)=>!open)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 lg:hidden" aria-label="Toggle admin navigation"><Menu size={14}/> Menu</button><span className="text-[10px] font-bold uppercase tracking-widest text-[#052767] dark:text-slate-300">{settings.name} · Admin workspace</span></div><div className="flex items-center gap-2">{demoMode || demo ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">Sample data</span> : <AccountMenu />}</div></div>
+        {mobileNavOpen && <div className="border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#050d21] lg:hidden animate-in slide-in-from-top duration-200"><div className="mb-3 flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-widest text-[#052767] dark:text-slate-300">Navigation</span><button onClick={()=>setMobileNavOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close menu"><X size={14}/></button></div>{nav}</div>}
         <div className="p-4 sm:p-6 lg:p-7"><div className="mb-5 flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-extrabold tracking-tight text-[#052767] dark:text-white sm:text-2xl">{sectionInfo.find((item)=>item.id===activeSection)?.label}</h1><p className="mt-1 text-xs font-semibold text-[#052767] dark:text-slate-300">{settings.name} · {settings.city} · {ROLE_LABEL[user.role]} view</p></div><span className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-semibold text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500"/>Sample workspace active</span></div>{activeContent}</div>
       </div>
     </div>
@@ -239,7 +250,7 @@ export default function AdminWorkspace({ demoMode = false }: { demoMode?: boolea
         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Customer display name<input required value={newCustomer} onChange={(event)=>setNewCustomer(event.target.value)} placeholder="Demo guest" className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"/></label>
         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Service<select value={newServiceId} onChange={(event)=>setNewServiceId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white">{settings.services.map((service)=><option key={service.id} value={service.id}>{service.name} · {currency(service.pricePKR)}</option>)}</select></label>
         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Stylist / chair<select value={newStaffId} onChange={(event)=>{setNewStaffId(event.target.value);setBookingFormError("");}} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white">{settings.stylists.map((staff)=><option key={staff.id} value={staff.id}>{staff.name}</option>)}</select></label>
-        <div className="grid grid-cols-2 gap-3"><label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Date<select value={newDate} onChange={(event)=>{setNewDate(event.target.value);setBookingFormError("");}} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"><option>Today</option><option>Tomorrow</option><option>Saturday</option></select></label><label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Time<input value={newTime} onChange={(event)=>{setNewTime(event.target.value);setBookingFormError("");}} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"/></label></div>
+        <div className="grid grid-cols-2 gap-3"><label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Date<div className="mt-1 relative"><button type="button" onClick={() => newDateInputRef.current?.click()} className="inline-flex w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><CalendarDays size={13} className="text-[#1CA830]" /> {newDate}</button><input ref={newDateInputRef} type="date" value={newDateISO} onChange={(event) => { if (event.target.value) { setNewDateISO(event.target.value); setNewDate(formatDateLabel(event.target.value)); setBookingFormError(""); } }} className="hidden" /></div></label><label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Time<input value={newTime} onChange={(event)=>{setNewTime(event.target.value);setBookingFormError("");}} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"/></label></div>
 
         {/* Live slot status */}
         {(() => {

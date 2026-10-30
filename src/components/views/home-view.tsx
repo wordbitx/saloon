@@ -144,7 +144,8 @@ export default function HomeView() {
         {/* Subtle radial glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 max-w-4xl h-96 bg-gradient-to-b from-[#1CA830]/10 via-[#052767]/5 to-transparent blur-3xl pointer-events-none -z-10" />
 
-        <div className="text-center max-w-4xl mx-auto space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-8 items-center">
+        <div className="space-y-6">
           <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/10 via-[#052767]/10 to-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-[#052767] dark:text-[#9fdda8] shadow-xs">
             <span className="w-2 h-2 rounded-full bg-[#1CA830] animate-pulse" />
             <span className="font-bold text-[#1CA830]">WordbitX</span>
@@ -164,7 +165,7 @@ export default function HomeView() {
             Banayein.
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
             Salon ke har missed WhatsApp message aur missed call par foran jawab, booking offer,
             reminder, aur cancellation par waitlist backfill. Owner ko roz aik list:{" "}
             <strong className="text-[#052767] dark:text-white">
@@ -172,7 +173,7 @@ export default function HomeView() {
             </strong>
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3.5 pt-2">
             <button
               onClick={() => setActiveTab("simulator")}
               className="px-6 py-3.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-[#1CA830] hover:bg-[#178e29] shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 active:scale-95"
@@ -191,12 +192,18 @@ export default function HomeView() {
             </button>
           </div>
 
-          <div className="pt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+          <div className="pt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center lg:justify-start gap-2">
             <ShieldCheck className="w-4 h-4 text-[#1CA830]" />
             <span>
               Phase 1 sellable demo · Sample salon data · Demo dashboard par login zaroori nahi
             </span>
           </div>
+        </div>
+
+        {/* Phone demo column — desktop: right of text, mobile: below */}
+        <div className="flex justify-center lg:justify-end order-2 lg:order-2">
+          <HomePhoneDemo />
+        </div>
         </div>
 
         {/* Live Metrics Proof Bar */}
