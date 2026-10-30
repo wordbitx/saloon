@@ -27,6 +27,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
+import { useRouter } from "next/navigation";
 import { WORDBITX_COMPANY } from "@/lib/constants";
 
 export default function HomeView() {
@@ -36,6 +37,7 @@ export default function HomeView() {
     recoveredRevenuePKR,
     openConsultationWithPlan,
   } = useSalon();
+  const router = useRouter();
 
   const comparisonRows = [
     {
@@ -179,7 +181,7 @@ export default function HomeView() {
             </button>
 
             <button
-              onClick={() => setActiveTab("dashboard")}
+              onClick={() => router.push("/admin")}
               className="px-5 py-3.5 rounded-xl font-bold text-xs sm:text-sm text-[#052767] dark:text-white bg-white dark:bg-[#050d21] border border-slate-300 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors shadow-xs flex items-center gap-2"
             >
               <LayoutDashboard className="w-4 h-4 text-[#1CA830]" />
@@ -259,7 +261,7 @@ export default function HomeView() {
                 </li>
               ))}
             </ul>
-            <button onClick={() => setActiveTab("dashboard")} className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#052767] px-5 py-3 text-xs font-bold text-white hover:bg-[#0a3582] transition-colors">
+            <button onClick={() => router.push("/admin")} className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#052767] px-5 py-3 text-xs font-bold text-white hover:bg-[#0a3582] transition-colors">
               <LayoutDashboard size={16} /> Dashboard mein chair timeline dekhein
               <ArrowRight size={14} />
             </button>

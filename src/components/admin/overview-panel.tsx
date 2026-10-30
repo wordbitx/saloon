@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { ArrowRight, Banknote, CalendarDays, Clock3, Download, Gift, Inbox, MapPin, Plus, Sparkles, UserPlus, Wallet } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
+import { useAuth } from "@/context/auth-context";
 import SalonChairTimeline from "@/components/admin/salon-chair-timeline";
 import StylistWorkload from "@/components/admin/stylist-workload";
 import SalonServiceMix from "@/components/admin/salon-service-mix";
@@ -45,6 +46,7 @@ function SectionHead({ eyebrow, title, hint }: { eyebrow: string; title: string;
 
 export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWalkIn, onExportCsv, inbox, inboxPending }: Props) {
   const { settings, bookings, waitlist } = useSalon();
+  const { can } = useAuth();
   const metrics = overviewMetrics(bookings, waitlist);
   const categories = categorySummary(bookings, settings);
   const todayRows = bookings.filter((booking) => isActive(booking) && isToday(booking));
@@ -100,9 +102,9 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <button onClick={onWalkIn} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[10px] font-bold text-[#052767] hover:bg-blue-50"><UserPlus size={11} /> Walk-in add karein</button>
-              <button onClick={onAddBooking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-[10px] font-bold text-white hover:bg-white/20"><Plus size={11} /> Naya slot / booking</button>
-              <button onClick={onExportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-500/30"><Download size={11} /> CSV export</button>
+              {can("bookings.create") && <button onClick={onWalkIn} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[10px] font-bold text-[#052767] hover:bg-blue-50"><UserPlus size={11} /> Walk-in add karein</button>}
+              {can("bookings.create") && <button onClick={onAddBooking} className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-[10px] font-bold text-white hover:bg-white/20"><Plus size={11} /> Naya slot / booking</button>}
+              {can("reports.view") && <button onClick={onExportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-500/30"><Download size={11} /> CSV export</button>}
             </div>
           </div>
 

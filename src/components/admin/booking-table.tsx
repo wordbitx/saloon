@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { AlertTriangle, CheckCircle2, MessageCircle, Pencil, Save, Trash2, X, XCircle } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
+import { useAuth } from "@/context/auth-context";
 import { Booking } from "@/types/salon";
 import { waLink, waMessageFor } from "@/lib/whatsapp";
 import { SLOT_TIMES, money } from "@/lib/salon-analytics";
@@ -56,6 +57,10 @@ export default function BookingTable({
   emptyText?: string;
 }) {
   const { settings, completeBooking, cancelBooking, deleteBooking } = useSalon();
+  const { can } = useAuth();
+  const canEdit = can("bookings.edit");
+  const canDelete = can("bookings.delete");
+  const canChangeStatus = can("bookings.status");
   const [editing, setEditing] = useState<Booking | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const cell = compact ? "py-2" : "py-3";
@@ -104,7 +109,7 @@ export default function BookingTable({
                   </td>
                   <td className={`px-3 ${cell}`}>
                     <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-                      {booking.status === "confirmed" && (
+                      {canChangeStatus && booking.status === "confirmed" && (
                         <>
                           <button onClick={() => completeBooking(booking.id)} className={`${btn} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300`}>
                             <CheckCircle2 size={11} /> Complete
@@ -114,10 +119,12 @@ export default function BookingTable({
                           </button>
                         </>
                       )}
-                      <button onClick={() => setEditing(booking)} className={`${btn} border-slate-200 text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:text-slate-200`}>
-                        <Pencil size={11} /> Edit
-                      </button>
-                      {pendingDelete === booking.id ? (
+                      {canEdit && (
+                        <button onClick={() => setEditing(booking)} className={`${btn} border-slate-200 text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:text-slate-200`}>
+                          <Pencil size={11} /> Edit
+                        </button>
+                      )}
+                      {canDelete && (pendingDelete === booking.id ? (
                         <span className="flex items-center gap-1">
                           <button onClick={() => { deleteBooking(booking.id); setPendingDelete(null); }} className={`${btn} border-rose-600 bg-rose-600 text-white`}>Haan, delete</button>
                           <button onClick={() => setPendingDelete(null)} className={`${btn} border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300`}>Nahi</button>
@@ -126,7 +133,7 @@ export default function BookingTable({
                         <button onClick={() => setPendingDelete(booking.id)} aria-label="Delete booking" className={`${btn} border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-700 dark:border-slate-700`}>
                           <Trash2 size={11} />
                         </button>
-                      )}
+                      ))}
                     </div>
                   </td>
                 </tr>
