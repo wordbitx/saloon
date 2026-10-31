@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { badRequest, guard, readJson } from "@/lib/auth/api";
 import { passwordProblem } from "@/lib/auth/password";
 import { hasCapability, isStaffRole } from "@/lib/auth/roles";
-import { AuthStoreError, deleteStaffAccount, updateStaffAccount } from "@/lib/auth/store";
+import { AuthStoreError, deleteStaffAccount, getStaffAccountById, updateStaffAccount } from "@/lib/auth/store";
+import { getWorkspace } from "@/lib/workspaces/store";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     email?: string;
     displayName?: string;
     role?: string;
+    salonId?: string | null;
+    branchId?: string | null;
     isActive?: boolean;
     password?: string;
   }>(request);
@@ -37,10 +40,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   try {
+    const current = await getStaffAccountById(id);
+    if (!current) return badRequest("Staff account nahi mila.", 404);
+    const nextRole = isStaffRole(body.role) ? body.role : current.role;
+    const nextSalonId = body.salonId === undefined ? current.salonId : body.salonId;
+    const nextBranchId = body.branchId === undefined ? current.branchId : body.branchId;
+    // Old unassigned accounts may still be disabled or have their password reset,
+    // but cannot access data until an owner assigns a valid salon AND branch.
+    if (nextRole !== "owner" && (body.role !== undefined || body.salonId !== undefined || body.branchId !== undefined || body.isActive === true)) {
+      const workspace = typeof nextSalonId === "string" ? await getWorkspace(nextSalonId) : null;
+      if (!workspace) return badRequest("Manager / reception ke liye ek salon select karein.");
+      if (typeof nextBranchId !== "string" || !workspace.settings.branches.some((branch) => branch.id === nextBranchId)) return badRequest("Is salon ki ek specific branch select karein.");
+    }
     const account = await updateStaffAccount(id, {
       email: body.email,
       displayName: body.displayName,
       role: isStaffRole(body.role) ? body.role : undefined,
+      salonId: body.salonId,
+      branchId: body.branchId,
       isActive: typeof body.isActive === "boolean" ? body.isActive : undefined,
       password: body.password,
     });

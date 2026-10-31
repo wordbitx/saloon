@@ -7,18 +7,18 @@ import AdminWorkspace from "@/components/admin/admin-workspace";
 import PricingView from "@/components/views/pricing-view";
 import SettingsView from "@/components/views/settings-view";
 import TenantLabView from "@/components/views/tenant-lab-view";
-import ConsultationModal from "@/components/modals/consultation-modal";
 import MorningBriefModal from "@/components/modals/morning-brief-modal";
 import { useSalon } from "@/context/salon-context";
 import { ViewTab } from "@/types/salon";
+
+const subscribeToHydration = () => () => {};
+const clientHydrated = () => true;
+const serverHydrated = () => false;
 
 export default function SalonRecoveryMaster({ initialTab }: { initialTab?: ViewTab }) {
   const {
     activeTab,
     setActiveTab,
-    consultationModalOpen,
-    setConsultationModalOpen,
-    selectedPlanForConsultation,
     morningBriefOpen,
     setMorningBriefOpen,
     toastMessage,
@@ -26,9 +26,8 @@ export default function SalonRecoveryMaster({ initialTab }: { initialTab?: ViewT
 
   // Route-provided tab wins on first paint so the right page is server-rendered,
   // then in-app navigation controls the active tab.
-  const [hydrated, setHydrated] = React.useState(false);
+  const hydrated = React.useSyncExternalStore(subscribeToHydration, clientHydrated, serverHydrated);
   React.useEffect(() => {
-    setHydrated(true);
     if (initialTab) {
       setActiveTab(initialTab);
     }
@@ -55,11 +54,6 @@ export default function SalonRecoveryMaster({ initialTab }: { initialTab?: ViewT
       {view === "settings" && <SettingsView />}
       {view === "tenant-lab" && <TenantLabView />}
 
-      <ConsultationModal
-        isOpen={consultationModalOpen}
-        onClose={() => setConsultationModalOpen(false)}
-        selectedPlanName={selectedPlanForConsultation}
-      />
       <MorningBriefModal
         isOpen={morningBriefOpen}
         onClose={() => setMorningBriefOpen(false)}

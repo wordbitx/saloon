@@ -24,5 +24,8 @@ export default async function AdminLoginPage({
 
   const defaultHint = await getDefaultCredentialHint();
 
-  return <AdminLoginForm defaultHint={defaultHint} signedOutReason={reason ?? null} />;
+  const setupWarning = process.env.NODE_ENV === "production" && !process.env.ADMIN_PASSWORD
+    ? "Agar pehla owner account abhi nahi bana, deployment mein ADMIN_EMAIL aur strong ADMIN_PASSWORD set karein. Default password production mein seed nahi hota."
+    : null;
+  return <AdminLoginForm defaultHint={defaultHint} signedOutReason={reason ?? null} setupWarning={setupWarning} />;
 }

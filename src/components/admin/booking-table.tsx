@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import { Booking } from "@/types/salon";
 import { waLink, waMessageFor } from "@/lib/whatsapp";
 import { SLOT_TIMES, money } from "@/lib/salon-analytics";
+import { bookingReference } from "@/lib/booking-schedule";
 
 export const CHANNEL_OPTIONS: { value: Booking["channel"]; label: string }[] = [
   { value: "whatsapp_night", label: "Night WhatsApp" },
@@ -86,7 +87,7 @@ export default function BookingTable({
               const cancelled = booking.status === "cancelled";
               return (
                 <tr key={booking.id} className={`transition hover:bg-slate-50/70 dark:hover:bg-slate-900/40 ${cancelled ? "opacity-60" : ""}`}>
-                  <td className={`px-3 ${cell} font-mono text-[10px] text-slate-500`}>{booking.id}</td>
+                  <td className={`px-3 ${cell} font-mono text-[10px] text-slate-500`}>{bookingReference(booking)}</td>
                   <td className={`px-3 ${cell}`}>
                     <strong className={`block text-[11px] text-slate-800 dark:text-white ${cancelled ? "line-through" : ""}`}>{booking.customerName}</strong>
                     <span className="mt-1 block">
@@ -162,6 +163,7 @@ function BookingEditor({ booking, onClose }: { booking: Booking; onClose: () => 
     status: booking.status,
   });
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const service = settings.services.find((item) => item.name === form.serviceName);
   const listPrice = service?.pricePKR ?? null;
@@ -175,7 +177,7 @@ function BookingEditor({ booking, onClose }: { booking: Booking; onClose: () => 
     setError("");
   };
 
-  const save = () => {
+  const save = async () => {
     if (!form.customerName.trim()) {
       setError("Client ka naam zaroori hai.");
       return;
@@ -184,19 +186,22 @@ function BookingEditor({ booking, onClose }: { booking: Booking; onClose: () => 
       setError("Price sahi number mein likhein (0 ya zyada).");
       return;
     }
-    const result = updateBooking(booking.id, {
+    setSaving(true);
+    const result = await updateBooking(booking.id, {
       customerName: form.customerName.trim(),
       customerPhone: form.customerPhone.trim(),
       serviceId: service?.id,
       serviceName: form.serviceName,
       amountPKR: amountNumber,
       stylistName: form.stylistName,
+      stylistId: settings.stylists.find((stylist) => stylist.name === form.stylistName)?.id,
       date: form.date,
       time: form.time,
       channel: form.channel,
       status: form.status,
       notes: customPrice ? `Custom price ${money(amountNumber)} (service list price ${money(listPrice ?? 0)})` : booking.notes,
     });
+    setSaving(false);
     if (result.ok) onClose();
     else setError(result.message ?? "Save nahi hua.");
   };
@@ -206,7 +211,7 @@ function BookingEditor({ booking, onClose }: { booking: Booking; onClose: () => 
       <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#050d21]">
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5 dark:border-slate-800">
           <div>
-            <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-emerald-700 dark:text-emerald-400">Booking edit · {booking.id}</span>
+            <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-emerald-700 dark:text-emerald-400">Booking edit · {bookingReference(booking)}</span>
             <h3 id="edit-booking-title" className="mt-1 text-lg font-bold text-[#052767] dark:text-white">{booking.customerName}</h3>
             <div className="mt-1"><WhatsAppLink phone={form.customerPhone} message={waMessageFor(booking, settings.name)} /></div>
           </div>
@@ -244,6 +249,7 @@ function BookingEditor({ booking, onClose }: { booking: Booking; onClose: () => 
           <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
             Stylist / chair
             <select value={form.stylistName} onChange={(e) => update("stylistName", e.target.value)} className={input}>
+              {!settings.stylists.some((stylist) => stylist.name === booking.stylistName) && <option value={booking.stylistName}>{booking.stylistName} (previous staff)</option>}
               {settings.stylists.map((stylist) => <option key={stylist.id} value={stylist.name}>{stylist.name}</option>)}
             </select>
           </label>
@@ -283,7 +289,7 @@ function BookingEditor({ booking, onClose }: { booking: Booking; onClose: () => 
 
         <div className="flex items-center justify-end gap-2 border-t border-slate-100 p-4 dark:border-slate-800">
           <button onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">Cancel</button>
-          <button onClick={save} className="inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-4 py-2 text-xs font-bold text-white hover:bg-[#178e29]"><Save size={13} /> Save changes</button>
+          <button onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-4 py-2 text-xs font-bold text-white hover:bg-[#178e29] disabled:opacity-50"><Save size={13} /> {saving ? "Saving…" : "Save changes"}</button>
         </div>
       </div>
     </div>

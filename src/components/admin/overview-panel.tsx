@@ -2,9 +2,11 @@
 
 import React from "react";
 import Image from "next/image";
-import { ArrowRight, Banknote, CalendarDays, Clock3, Download, Gift, Inbox, MapPin, Plus, Sparkles, UserPlus, Wallet } from "lucide-react";
+import { ArrowRight, Banknote, CalendarDays, Clock3, Download, Gift, Inbox, MapPin, Plus, RefreshCw, Sparkles, UserPlus, Wallet } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
 import { useAuth } from "@/context/auth-context";
+import { useWorkspaces } from "@/context/workspace-context";
+import { karachiToday, type BookingSlotSelection } from "@/lib/booking-schedule";
 import SalonChairTimeline from "@/components/admin/salon-chair-timeline";
 import StylistWorkload from "@/components/admin/stylist-workload";
 import SalonServiceMix from "@/components/admin/salon-service-mix";
@@ -26,6 +28,7 @@ type Props = {
   onDrill: (spec: DrillSpec) => void;
   onNavigate: (section: string) => void;
   onAddBooking: () => void;
+  onSelectSlot: (slot: BookingSlotSelection) => void;
   onWalkIn: () => void;
   onExportCsv: () => void;
   inbox: InboxItem[];
@@ -44,12 +47,18 @@ function SectionHead({ eyebrow, title, hint }: { eyebrow: string; title: string;
   );
 }
 
-export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWalkIn, onExportCsv, inbox, inboxPending }: Props) {
+export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onSelectSlot, onWalkIn, onExportCsv, inbox, inboxPending }: Props) {
   const { settings, bookings, waitlist } = useSalon();
-  const { can } = useAuth();
+  const { can, demo } = useAuth();
+  const { activeWorkspace, activeBranchId, refreshWorkspaces } = useWorkspaces();
+  const [refreshing, setRefreshing] = React.useState(false);
   const metrics = overviewMetrics(bookings, waitlist);
   const categories = categorySummary(bookings, settings);
   const todayRows = bookings.filter((booking) => isActive(booking) && isToday(booking));
+  const today = karachiToday();
+  const weekday = new Date(`${today}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  const allDayBlock = (activeWorkspace.scheduleBlocks ?? []).find((block) => block.allDay && block.startDate <= today && block.endDate >= today && (block.scope === "salon" || (block.scope === "branch" && activeBranchId !== "all" && block.branchId === activeBranchId)));
+  const hoursLabel = settings.offDays.includes(weekday) ? `Closed · Weekly off (${weekday})` : allDayBlock ? `Closed · ${allDayBlock.reason}` : `Hours · ${settings.openingTime} – ${settings.closingTime}`;
 
   const todayRecoveredSpec: DrillSpec = {
     title: "Aaj recover hui bookings",
@@ -57,11 +66,11 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
     defaultToday: true,
     filter: (booking) => isActive(booking) && isToday(booking) && booking.isRecovered,
   };
-  const confirmedTodaySpec: DrillSpec = {
-    title: "Aaj ki confirmed bookings",
-    subtitle: "Aaj ke confirmed appointments",
+  const todayBookingsSpec: DrillSpec = {
+    title: "Aaj ki bookings",
+    subtitle: "Aaj ke confirmed aur completed appointments; cancelled shamil nahi",
     defaultToday: true,
-    filter: (booking) => isActive(booking) && isToday(booking) && booking.status === "confirmed",
+    filter: (booking) => isActive(booking) && isToday(booking),
   };
   const recoveredAllSpec: DrillSpec = {
     title: "Sab bachi hui bookings",
@@ -72,7 +81,8 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
 
   return (
     <div className="space-y-5">
-      {/* Hero — live headline and stat tiles */}
+      {!demo && <div className="flex justify-end"><button type="button" disabled={refreshing} onClick={() => { setRefreshing(true); void refreshWorkspaces().finally(() => setRefreshing(false)); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-600 hover:border-emerald-400 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><RefreshCw size={12} className={refreshing ? "animate-spin" : ""} /> Refresh data</button></div>}
+      {/* Hero — summary for the selected salon / branch */}
       <section className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-lg shadow-blue-950/10 dark:border-slate-800">
         <Image src="/images/salon-interior-hero.jpg" alt="Salon interior (sample imagery)" fill priority sizes="(max-width: 1024px) 100vw, 1100px" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#031844]/93 via-[#052767]/78 to-[#052767]/30" />
@@ -80,26 +90,15 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/40 bg-emerald-400/20 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[.14em] text-emerald-100">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Open · {settings.openingTime} – {settings.closingTime}
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {hoursLabel}
               </span>
-              <span className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[9px] font-bold text-white">Fictional demo salon</span>
+              <span className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[9px] font-bold text-white">{activeWorkspace.isSample ? "Fictional demo salon" : "Selected salon"}</span>
             </div>
 
-            <button onClick={() => onDrill(todayRecoveredSpec)} className="group mt-3 block text-left">
-              <h2 className="text-xl font-extrabold leading-snug tracking-tight text-white sm:text-2xl">
-                Aaj{" "}
-                <span className="rounded-md text-emerald-300 underline decoration-emerald-300/60 decoration-dotted underline-offset-4 group-hover:text-emerald-200">
-                  {metrics.todayRecoveredCount} bookings
-                </span>{" "}
-                bach gayi — {money(metrics.todayRecoveredValue)}
-              </h2>
-              <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-200/90">Dekhne ke liye click karein <ArrowRight size={11} /></span>
-            </button>
-
-            <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-white/90"><MapPin size={12} /> {settings.name} · {settings.area}</p>
-            <p className="mt-2 max-w-xl text-[11px] leading-relaxed text-white/85">
-              Missed WhatsApp messages, missed calls aur cancellations se bachi hui bookings. Neeche category, chair aur booking details sab live hain.
-            </p>
+            <h2 className="mt-3 text-xl font-extrabold leading-snug tracking-tight text-white sm:text-2xl">Har booking ka khayal.<br /><span className="text-emerald-300">Har din behtar.</span></h2>
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-white/90"><MapPin size={12} /> {settings.name} · {activeBranchId === "all" ? "All branches" : settings.branches.find((branch) => branch.id === activeBranchId)?.name}</p>
+            <p className="mt-2 max-w-xl text-[11px] leading-relaxed text-white/85">Aapke salon ki appointments, team aur roz ka snapshot — sab ek jagah.</p>
+            <button onClick={() => onDrill(todayRecoveredSpec)} className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-200 hover:text-white">Aaj ki recovered bookings: {metrics.todayRecoveredCount} · {money(metrics.todayRecoveredValue)} <ArrowRight size={11} /></button>
 
             <div className="mt-4 flex flex-wrap gap-2">
               {can("bookings.create") && <button onClick={onWalkIn} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[10px] font-bold text-[#052767] hover:bg-blue-50"><UserPlus size={11} /> Walk-in add karein</button>}
@@ -108,14 +107,14 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div role="group" aria-label="Salon overview statistics" className="grid grid-cols-2 gap-2">
             {[
-              { label: "Chairs (stylists)", value: settings.stylists.length, onClick: () => onNavigate("staff") },
-              { label: "Confirmed today", value: metrics.todayConfirmed, onClick: () => onDrill(confirmedTodaySpec) },
+              { label: "Bookings today", value: metrics.todayTotal, onClick: () => onDrill(todayBookingsSpec) },
               { label: "Waitlist waiting", value: metrics.waitingCount, onClick: () => onNavigate("waitlist") },
+              { label: "Chairs (stylists)", value: settings.stylists.length, onClick: () => onNavigate("staff") },
               { label: "Menu services", value: settings.services.length, onClick: () => onNavigate("services") },
             ].map((tile) => (
-              <button key={tile.label} onClick={tile.onClick} className="group rounded-xl border border-white/25 bg-white/15 p-3 text-left backdrop-blur-sm transition hover:bg-white/25">
+              <button key={tile.label} onClick={tile.onClick} className={`group rounded-xl border p-3 text-left backdrop-blur-sm transition hover:bg-white/25 ${tile.label === "Bookings today" ? "border-emerald-200/70 bg-emerald-500/35 ring-1 ring-emerald-200/30" : "border-white/25 bg-white/15"}`}>
                 <strong className="block text-xl font-extrabold text-white">{tile.value}</strong>
                 <span className="mt-0.5 flex items-center justify-between text-[9px] font-semibold uppercase tracking-wider text-white/85">
                   {tile.label} <ArrowRight size={10} className="opacity-0 transition group-hover:opacity-100" />
@@ -177,7 +176,7 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
       </div>
 
       {/* Chair timeline — live, with day tabs and records */}
-      <SalonChairTimeline onAddBooking={onAddBooking} onOpenDrill={onDrill} />
+      <SalonChairTimeline onAddBooking={can("bookings.create") ? onAddBooking : undefined} onSelectSlot={can("bookings.create") ? onSelectSlot : undefined} onOpenDrill={onDrill} />
 
       {/* Salon menu — every service is clickable */}
       <section className="space-y-3">
@@ -284,8 +283,8 @@ export default function OverviewPanel({ onDrill, onNavigate, onAddBooking, onWal
             <button onClick={onWalkIn} className="rounded-lg bg-[#1CA830] px-3 py-2 text-[10px] font-bold text-white hover:bg-[#178e29]"><UserPlus className="mr-1 inline" size={13} /> Walk-in</button>
             <button onClick={onAddBooking} className="rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:text-slate-200"><Plus className="mr-1 inline" size={13} /> Naya booking</button>
             <button onClick={() => onNavigate("waitlist")} className="rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200"><Gift className="mr-1 inline" size={13} /> Waitlist</button>
-            <a href="/simulator" className="rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">WhatsApp simulator</a>
-            <button onClick={() => onNavigate("reports")} className="rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">Reports</button>
+            {demo && <a href="/simulator" className="rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">WhatsApp simulator</a>}
+            {can("reports.view") && <button onClick={() => onNavigate("reports")} className="rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">Reports</button>}
           </div>
         </div>
       </section>

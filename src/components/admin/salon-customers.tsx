@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   CalendarDays,
-  Mail,
-  PhoneCall,
+  Pencil,
+  Plus,
+  Trash2,
   Search,
   Sparkles,
   Star,
@@ -14,82 +15,84 @@ import {
   X,
 } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
+import { useAuth } from "@/context/auth-context";
+import { customerProfiles, type CustomerDraft, type CustomerProfile, type CustomerTarget } from "@/lib/customers";
+import { useWorkspaces } from "@/context/workspace-context";
 import { WhatsAppLink } from "@/components/admin/booking-table";
 
 const currency = (amount: number) => `PKR ${amount.toLocaleString("en-PK")}`;
-const masked = (phone: string) => `•••• ${phone.replace(/\D/g, "").slice(-4)}`;
 
 /** Build a professional customer profile from repeat-client memory + booking history. */
 export default function SalonCustomers() {
-  const { repeatCustomers, bookings, settings } = useSalon();
+  const { settings } = useSalon();
+  const { can } = useAuth();
+  const { activeWorkspace, activeBranchId, saveCustomer, deleteCustomer } = useWorkspaces();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"visits" | "value" | "name">("value");
   const [selected, setSelected] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{ customer: CustomerDraft; previous?: CustomerTarget } | null>(null);
+  const [deleting, setDeleting] = useState<CustomerTarget | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const modalRef = useRef<HTMLDivElement>(null);
+  const savingRef = useRef(false);
+  useEffect(() => { savingRef.current = saving; }, [saving]);
+  const editingOpen = !!draft;
+  const deletingOpen = !!deleting;
+  useEffect(() => {
+    if (!editingOpen && !deletingOpen) return;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => (modalRef.current?.querySelector<HTMLElement>("input:not([disabled]), button:not([disabled])"))?.focus(), 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !savingRef.current) { event.preventDefault(); setDraft(null); setDeleting(null); return; }
+      if (event.key !== "Tab" || !modalRef.current) return;
+      const elements = Array.from(modalRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'));
+      if (!elements.length) return;
+      const first = elements[0]; const last = elements[elements.length - 1];
+      if (!modalRef.current.contains(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); }
+      else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => { document.removeEventListener("keydown", onKeyDown); window.clearTimeout(timer); document.body.style.overflow = previousOverflow; trigger?.focus(); };
+  }, [editingOpen, deletingOpen]);
+  const targetFor = (profile: CustomerProfile): CustomerTarget => ({ branchId: profile.branchId, name: profile.name, ...(profile.recordId ? { recordId: profile.recordId } : {}) });
+  const editProfile = (profile: CustomerProfile) => {
+    setError("");
+    setDraft({ customer: { id: profile.recordId ?? `CU-${crypto.randomUUID()}`, branchId: profile.branchId, name: profile.name, phone: profile.phone, notes: profile.notes }, previous: targetFor(profile) });
+  };
+  const newProfile = () => {
+    setError("");
+    setDraft({ customer: { id: `CU-${crypto.randomUUID()}`, branchId: activeBranchId === "all" ? (activeWorkspace.settings.branches[0]?.id ?? "") : activeBranchId, name: "", phone: "", notes: "" } });
+  };
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!draft || saving) return;
+    setSaving(true); setError("");
+    const result = await saveCustomer(draft.customer, draft.previous);
+    setSaving(false);
+    if (!result.ok) { setError(result.message ?? "Customer save nahi hua."); return; }
+    setDraft(null); setSelected(null);
+  };
+  const remove = async () => {
+    if (!deleting || saving) return;
+    setSaving(true); setError("");
+    const result = await deleteCustomer(deleting);
+    setSaving(false);
+    if (!result.ok) { setError(result.message ?? "Customer delete nahi hua."); return; }
+    setDeleting(null); setSelected(null);
+  };
 
   const profiles = useMemo(() => {
-    const known = repeatCustomers.map((customer) => {
-      const history = bookings.filter(
-        (booking) => booking.customerName.toLowerCase() === customer.name.toLowerCase() && booking.status !== "cancelled"
-      );
-      return {
-        id: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        lastService: customer.lastService,
-        lastVisitDate: customer.lastVisitDate,
-        visits: Math.max(customer.totalVisits, history.length),
-        preferredStylist: customer.preferredStylist,
-        notes: customer.notes ?? "",
-        spend: history.reduce((sum, booking) => sum + booking.amountPKR, 0),
-        bookings: history,
-        isKnown: true,
-      };
-    });
-
-    // Include walk-in / one-off customers that are not in the repeat-memory list.
-    const knownNames = new Set(known.map((profile) => profile.name.toLowerCase()));
-    const extras = Array.from(
-      new Map(
-        bookings
-          .filter((booking) => !knownNames.has(booking.customerName.toLowerCase()))
-          .map((booking) => [booking.customerName.toLowerCase(), booking])
-      ).values()
-    ).map((booking) => {
-      const history = bookings.filter(
-        (row) => row.customerName.toLowerCase() === booking.customerName.toLowerCase() && row.status !== "cancelled"
-      );
-      return {
-        id: `guest-${booking.customerName.toLowerCase().replace(/\s+/g, "-")}`,
-        name: booking.customerName,
-        phone: booking.customerPhone,
-        lastService: booking.serviceName,
-        lastVisitDate: booking.date,
-        visits: history.length,
-        preferredStylist: booking.stylistName,
-        notes: "Single-visit guest in the sample register.",
-        spend: history.reduce((sum, row) => sum + row.amountPKR, 0),
-        bookings: history,
-        isKnown: false,
-      };
-    });
-
-    const all = [...known, ...extras];
-    const filtered = all.filter((profile) => {
-      const search = query.trim().toLowerCase();
-      if (!search) return true;
-      return (
-        profile.name.toLowerCase().includes(search) ||
-        profile.preferredStylist.toLowerCase().includes(search) ||
-        profile.lastService.toLowerCase().includes(search)
-      );
-    });
-
-    return filtered.sort((a, b) => {
+    const search = query.trim().toLowerCase();
+    return customerProfiles(activeWorkspace, activeBranchId).filter((profile) => !search || [profile.name, profile.phone, profile.preferredStylist, profile.lastService].some((value) => value.toLowerCase().includes(search))).sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
       if (sortBy === "visits") return b.visits - a.visits;
       return b.spend - a.spend;
     });
-  }, [repeatCustomers, bookings, query, sortBy]);
+  }, [activeWorkspace, activeBranchId, query, sortBy]);
 
   const totalSpend = profiles.reduce((sum, profile) => sum + profile.spend, 0);
   const repeatCount = profiles.filter((profile) => profile.visits > 1).length;
@@ -101,12 +104,13 @@ export default function SalonCustomers() {
       {/* Header */}
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <span className="text-[9px] font-extrabold uppercase tracking-widest text-blue-700 dark:text-blue-300">Client directory · sample data</span>
+          <span className="text-[9px] font-extrabold uppercase tracking-widest text-blue-700 dark:text-blue-300">Client directory · {activeWorkspace.isSample ? "sample data" : "selected salon"}</span>
           <h2 className="mt-1 text-xl font-bold text-[#052767] dark:text-white">Customers</h2>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Repeat customers, unki booking history, pasandida stylist aur total spend — masked contact numbers ke saath.
+            Customer records aur booking history. Add, edit aur delete sirf owner kar sakta hai.
           </p>
         </div>
+        {can("customers.manage") && <button type="button" onClick={newProfile} className="inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-3.5 py-2.5 text-xs font-bold text-white hover:bg-[#178e29]"><Plus size={14} /> Add customer</button>}
       </div>
 
       {/* Summary */}
@@ -114,7 +118,7 @@ export default function SalonCustomers() {
         {[
           { label: "Total customers", value: String(profiles.length), icon: Users, tint: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
           { label: "Repeat clients", value: String(repeatCount), icon: Sparkles, tint: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" },
-          { label: "Sample client value", value: currency(totalSpend), icon: Wallet, tint: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" },
+          { label: "Client value", value: currency(totalSpend), icon: Wallet, tint: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" },
           { label: "Top client", value: topProfile ? topProfile.name.split(" ")[0] : "—", icon: Star, tint: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
         ].map(({ label, value, icon: Icon, tint }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-[#050d21]">
@@ -149,7 +153,7 @@ export default function SalonCustomers() {
           <table className="w-full min-w-[820px] text-left text-xs">
             <thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr>
-                {["Customer", "Contact", "Last service", "Preferred stylist", "Visits", "Sample spend", ""].map((heading) => (
+                {["Customer", "Contact", "Last service", "Preferred stylist", "Visits", "Client spend", ""].map((heading) => (
                   <th key={heading} className="px-4 py-3 font-extrabold">{heading}</th>
                 ))}
               </tr>
@@ -164,15 +168,15 @@ export default function SalonCustomers() {
                       </span>
                       <div className="min-w-0">
                         <strong className="block truncate text-slate-800 dark:text-white">{profile.name}</strong>
-                        <span className="block text-[9px] text-slate-400">{profile.isKnown ? "Repeat client" : "Single visit"}</span>
+                        <span className="block text-[9px] text-slate-400">{activeWorkspace.settings.branches.find((branch) => branch.id === profile.branchId)?.name} · {profile.isKnown ? "Saved record" : "Booking guest"}</span>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                     <WhatsAppLink phone={profile.phone} message={`Assalam o alaikum ${profile.name}! ${settings.name} se baat ho rahi hai.`} />
                   </td>
-                  <td className="max-w-[190px] truncate px-4 py-3 text-slate-600 dark:text-slate-300">{profile.lastService}</td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{profile.preferredStylist}</td>
+                  <td className="max-w-[190px] truncate px-4 py-3 text-slate-600 dark:text-slate-300">{profile.lastService || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{profile.preferredStylist || "—"}</td>
                   <td className="px-4 py-3 font-bold text-[#052767] dark:text-white">{profile.visits}</td>
                   <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-400">{currency(profile.spend)}</td>
                   <td className="px-4 py-3 text-right">
@@ -192,7 +196,7 @@ export default function SalonCustomers() {
 
       {/* Customer profile drawer */}
       {selectedProfile && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={`Customer profile: ${selectedProfile.name}`}>
           <div className="w-full max-w-lg overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#050d21] sm:rounded-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5 dark:border-slate-800">
               <div className="flex items-center gap-3">
@@ -200,19 +204,20 @@ export default function SalonCustomers() {
                   {selectedProfile.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}
                 </span>
                 <div>
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Customer profile · sample</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Customer profile · {activeWorkspace.isSample ? "sample" : "selected salon"}</span>
                   <h3 className="mt-0.5 text-lg font-bold text-[#052767] dark:text-white">{selectedProfile.name}</h3>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400"><WhatsAppLink phone={selectedProfile.phone} message={`Assalam o alaikum ${selectedProfile.name}! ${settings.name} se baat ho rahi hai.`} /> · {selectedProfile.isKnown ? "repeat client" : "single visit"}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400"><WhatsAppLink phone={selectedProfile.phone} message={`Assalam o alaikum ${selectedProfile.name}! ${settings.name} se baat ho rahi hai.`} /> · {selectedProfile.isKnown ? "saved record" : "booking guest"}</p>
                 </div>
               </div>
               <button onClick={() => setSelected(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close profile"><X size={16} /></button>
             </div>
 
+            {can("customers.manage") && <div className="flex flex-wrap gap-2 border-b border-slate-100 px-5 py-3 dark:border-slate-800"><button type="button" onClick={() => editProfile(selectedProfile)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-bold text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:text-slate-200"><Pencil size={13} /> Edit customer</button><button type="button" onClick={() => { setError(""); setDeleting(targetFor(selectedProfile)); }} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-[11px] font-bold text-rose-700 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300"><Trash2 size={13} /> Delete customer</button></div>}
             <div className="grid grid-cols-3 gap-px bg-slate-100 text-center dark:bg-slate-800">
               {[
                 ["Visits", String(selectedProfile.visits)],
-                ["Sample spend", currency(selectedProfile.spend)],
-                ["Stylist", selectedProfile.preferredStylist.split(" ")[0]],
+                ["Client spend", currency(selectedProfile.spend)],
+                ["Stylist", selectedProfile.preferredStylist.split(" ")[0] || "—"],
               ].map(([label, value]) => (
                 <div key={label} className="bg-white p-3 dark:bg-[#050d21]">
                   <strong className="block truncate text-sm font-extrabold text-[#052767] dark:text-white">{value}</strong>
@@ -239,17 +244,32 @@ export default function SalonCustomers() {
                       <span className="shrink-0 font-bold text-emerald-700 dark:text-emerald-400">{currency(booking.amountPKR)}</span>
                     </div>
                   ))}
-                  {selectedProfile.bookings.length === 0 && <p className="text-[10px] text-slate-400">Is sample session mein koi booking nahi.</p>}
+                  {selectedProfile.bookings.length === 0 && <p className="text-[10px] text-slate-400">Is selection mein koi booking nahi.</p>}
                 </div>
               </div>
 
               <p className="rounded-lg bg-amber-50 p-2.5 text-[10px] leading-relaxed text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                Sample register · {settings.name}. Contact numbers masked; no WhatsApp or SMS is sent from this demo.
+                {activeWorkspace.isSample ? "Sample register" : "Salon register"} · {settings.name}. WhatsApp links open manually; no message is sent automatically.
               </p>
             </div>
           </div>
         </div>
       )}
+
+      {draft && <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="customer-form-title" className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm">
+        <form onSubmit={(event) => void submit(event)} className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#050d21]">
+          <div className="flex items-start justify-between border-b border-slate-100 p-5 dark:border-slate-800"><div><span className="text-[9px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Owner only</span><h3 id="customer-form-title" className="mt-1 text-lg font-bold text-[#052767] dark:text-white">{draft.previous ? "Edit customer" : "Add customer"}</h3><p className="mt-1 text-[11px] text-slate-500">Customer record selected branch ke liye save hoga.</p></div><button type="button" disabled={saving} onClick={() => setDraft(null)} aria-label="Close customer form" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"><X size={17} /></button></div>
+          <div className="space-y-3 p-5">
+            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Customer name<input required maxLength={160} value={draft.customer.name} onChange={(event) => setDraft({ ...draft, customer: { ...draft.customer, name: event.target.value } })} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white" /></label>
+            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Phone (optional)<input type="tel" maxLength={50} value={draft.customer.phone} onChange={(event) => setDraft({ ...draft, customer: { ...draft.customer, phone: event.target.value } })} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white" /></label>
+            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Branch<select required disabled={!!draft.previous} value={draft.customer.branchId} onChange={(event) => setDraft({ ...draft, customer: { ...draft.customer, branchId: event.target.value } })} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-white">{activeWorkspace.settings.branches.filter((branch) => activeBranchId === "all" || branch.id === activeBranchId || branch.id === draft.customer.branchId).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
+            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Notes (optional)<textarea rows={3} maxLength={1000} value={draft.customer.notes} onChange={(event) => setDraft({ ...draft, customer: { ...draft.customer, notes: event.target.value } })} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white" /></label>
+            {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-[11px] font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{error}</p>}
+          </div>
+          <div className="flex justify-end gap-2 border-t border-slate-100 p-4 dark:border-slate-800"><button type="button" disabled={saving} onClick={() => setDraft(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-200">Cancel</button><button type="submit" disabled={saving} className="rounded-lg bg-[#1CA830] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{saving ? "Saving…" : "Save customer"}</button></div>
+        </form>
+      </div>}
+      {deleting && <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="customer-delete-title" className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm"><div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-[#050d21]"><h3 id="customer-delete-title" className="text-sm font-bold text-[#052767] dark:text-white">Delete customer?</h3><p className="mt-2 text-[11px] leading-relaxed text-slate-500">{deleting.name} ko customer directory se remove kiya jayega. Purani bookings aur unka naam delete nahi hoga.</p>{error && <p role="alert" className="mt-3 text-[11px] text-rose-700">{error}</p>}<div className="mt-4 flex justify-end gap-2"><button type="button" disabled={saving} onClick={() => setDeleting(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-200">Cancel</button><button type="button" disabled={saving} onClick={() => void remove()} className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{saving ? "Deleting…" : "Delete record"}</button></div></div></div>}
     </div>
   );
 }

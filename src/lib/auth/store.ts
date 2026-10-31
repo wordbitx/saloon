@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import type { StaffRole } from "@/lib/auth/roles";
@@ -11,9 +11,9 @@ import type { AuthBackend, SessionUser } from "@/lib/auth/session";
  * Supabase connection string). The table is created on first use, so attaching
  * Supabase is enough — no manual SQL run is required.
  *
- * Fallback backend: an in-process memory store seeded with the default owner.
- * That keeps the deployed demo usable when DATABASE_URL is missing, but staff
- * accounts created in memory do not survive a redeploy. The UI says so.
+ * Without a configured database, an in-process demo store is used. Data does
+ * not survive restarts or work across instances. A configured but unreachable
+ * database fails closed instead of silently replacing real data with a demo.
  */
 
 export type StaffAccount = {
@@ -21,6 +21,9 @@ export type StaffAccount = {
   email: string;
   displayName: string;
   role: StaffRole;
+  /** Non-owners are restricted to one assigned salon and branch. */
+  salonId: string | null;
+  branchId: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -54,6 +57,8 @@ create table if not exists ${TABLE} (
   email text not null unique,
   display_name text not null,
   role text not null default 'reception',
+  salon_id text,
+  branch_id text,
   password_hash text not null,
   is_active boolean not null default true,
   created_by text,
@@ -62,6 +67,10 @@ create table if not exists ${TABLE} (
   last_login_at timestamptz,
   constraint staff_accounts_role_check check (role in ('owner','manager','reception'))
 );
+alter table ${TABLE} add column if not exists salon_id text;
+alter table ${TABLE} add column if not exists branch_id text;
+alter table ${TABLE} enable row level security;
+revoke all on table ${TABLE} from public;
 create index if not exists staff_accounts_role_idx on ${TABLE} (role);
 `;
 
@@ -84,7 +93,7 @@ function databaseUrl() {
   return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SUPABASE_DB_URL || "";
 }
 
-function getPool() {
+export function getAuthStorePool() {
   if (authGlobals.__wbxStaffPool) return authGlobals.__wbxStaffPool;
   const url = databaseUrl();
   if (!url) throw new Error("DATABASE_URL is not configured");
@@ -112,6 +121,8 @@ function rowToAccount(row: Record<string, unknown>): StaffRecord {
     email: String(row.email),
     displayName: String(row.display_name),
     role: (row.role as StaffRole) ?? "reception",
+    salonId: typeof row.salon_id === "string" ? row.salon_id : null,
+    branchId: typeof row.branch_id === "string" ? row.branch_id : null,
     passwordHash: String(row.password_hash),
     isActive: Boolean(row.is_active),
     createdAt: asDate(row.created_at),
@@ -126,8 +137,13 @@ function publicAccount(record: StaffRecord): StaffAccount {
   return rest;
 }
 
+function canSeedOwner() {
+  // Never create a known default administrator on a public production deploy.
+  return process.env.NODE_ENV !== "production" || Boolean(process.env.ADMIN_PASSWORD);
+}
+
 function seedMemory() {
-  if (memory.size > 0) return;
+  if (memory.size > 0 || !canSeedOwner()) return;
   const now = new Date().toISOString();
   const email = defaultAdminEmail();
   memory.set(email, {
@@ -135,6 +151,8 @@ function seedMemory() {
     email,
     displayName: "Salon Owner",
     role: "owner",
+    salonId: null,
+    branchId: null,
     passwordHash: hashPassword(defaultAdminPassword()),
     isActive: true,
     createdAt: now,
@@ -148,7 +166,7 @@ async function seedDatabase(client: Pool) {
   const email = defaultAdminEmail();
   // Only create the default owner when the salon has no active owner at all.
   const owners = await client.query(`select id from ${TABLE} where role = 'owner' and is_active = true limit 1`);
-  if ((owners.rowCount ?? 0) > 0) return;
+  if ((owners.rowCount ?? 0) > 0 || !canSeedOwner()) return;
   await client.query(
     `insert into ${TABLE} (email, display_name, role, password_hash, is_active, created_by)
      values ($1, $2, 'owner', $3, true, 'system')
@@ -163,19 +181,21 @@ async function initBackend(): Promise<{ mode: AuthBackend; error?: string }> {
     return { mode: "memory", error: "DATABASE_URL is not set — staff accounts live in this session only." };
   }
   try {
-    const client = getPool();
+    const client = getAuthStorePool();
     await client.query(createTableSql);
     await seedDatabase(client);
     return { mode: "database" };
   } catch (error) {
-    console.warn("[auth] Falling back to in-memory staff store:", (error as Error).message);
-    seedMemory();
-    return { mode: "memory", error: `Database not reachable (${(error as Error).message}).` };
+    console.error("[auth] Configured database unavailable:", (error as Error).message);
+    throw new Error("Staff database is unavailable. Check DATABASE_URL and retry.");
   }
 }
 
 function ensureBackend() {
-  if (!authGlobals.__wbxStaffBackend) authGlobals.__wbxStaffBackend = initBackend();
+  if (!authGlobals.__wbxStaffBackend) authGlobals.__wbxStaffBackend = initBackend().catch((error) => {
+    authGlobals.__wbxStaffBackend = undefined;
+    throw error;
+  });
   return authGlobals.__wbxStaffBackend;
 }
 
@@ -184,7 +204,7 @@ export async function getAuthBackendInfo() {
 }
 
 async function query<T = Record<string, unknown>>(text: string, values: unknown[] = []) {
-  const client = getPool();
+  const client = getAuthStorePool();
   const result = await client.query(text, values);
   return result.rows as T[];
 }
@@ -241,6 +261,7 @@ export async function authenticateStaff(email: string, password: string): Promis
 /** Show the seeded default credentials on the login screen only until they are changed. */
 export async function getDefaultCredentialHint(): Promise<{ email: string; password: string } | null> {
   try {
+    if (process.env.ADMIN_PASSWORD || process.env.ADMIN_EMAIL || process.env.NODE_ENV === "production") return null;
     const record = await findRecordByEmail(defaultAdminEmail());
     if (!record || !record.isActive) return null;
     if (!verifyPassword(defaultAdminPassword(), record.passwordHash)) return null;
@@ -257,36 +278,31 @@ export async function sessionUserFor(account: StaffAccount): Promise<SessionUser
     email: account.email,
     displayName: account.displayName,
     role: account.role,
+    salonId: account.salonId,
+    branchId: account.branchId,
     backend: backend.mode,
   };
 }
 
-/**
- * Re-read the signed-in account so deactivation / role changes apply immediately.
- *
- * In database mode a missing or disabled row means the session is dead. In the
- * temporary in-memory mode the HMAC-signed cookie is trusted when the row is not
- * in this instance, so a login is not lost between serverless instances.
- */
+/** Re-read the account on every request. Missing rows never inherit cookie access. */
 export async function getActiveSessionAccount(user: SessionUser): Promise<StaffAccount | null> {
   const account = await getStaffAccountById(user.id);
-  if (account) return account.isActive ? account : null;
+  return account?.isActive ? account : null;
+}
 
-  const backend = await getAuthBackendInfo();
-  if (backend.mode !== "memory") return null;
+/** Fresh account under the workspace lock. A database share lock prevents a
+ * concurrent revocation or reassignment from racing an authorized write. */
+export async function lockSessionUser(client: PoolClient, id: string): Promise<SessionUser | null> {
+  const rows = await client.query(`select * from ${TABLE} where id = $1 and is_active = true for share`, [id]);
+  if (!rows.rows[0]) return null;
+  const account = publicAccount(rowToAccount(rows.rows[0]));
+  return { id: account.id, email: account.email, displayName: account.displayName, role: account.role, salonId: account.salonId, branchId: account.branchId, backend: "database" };
+}
 
-  const now = new Date().toISOString();
-  return {
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    isActive: true,
-    createdAt: now,
-    updatedAt: now,
-    lastLoginAt: null,
-    createdBy: null,
-  };
+/** Called synchronously inside the memory workspace write's critical section. */
+export function memorySessionUser(id: string): SessionUser | null {
+  const account = [...memory.values()].find((item) => item.id === id && item.isActive);
+  return account ? { id: account.id, email: account.email, displayName: account.displayName, role: account.role, salonId: account.salonId, branchId: account.branchId ?? null, backend: "memory" } : null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -303,6 +319,8 @@ export async function createStaffAccount(input: {
   displayName: string;
   password: string;
   role: StaffRole;
+  salonId: string | null;
+  branchId: string | null;
   actorEmail: string;
 }): Promise<StaffAccount> {
   const email = normalizeEmail(input.email);
@@ -323,6 +341,8 @@ export async function createStaffAccount(input: {
       email,
       displayName: input.displayName.trim(),
       role: input.role,
+      salonId: input.role === "owner" ? null : input.salonId,
+      branchId: input.role === "owner" ? null : input.branchId,
       passwordHash,
       isActive: true,
       createdAt: now,
@@ -335,9 +355,9 @@ export async function createStaffAccount(input: {
   }
 
   const rows = await query(
-    `insert into ${TABLE} (email, display_name, role, password_hash, is_active, created_by)
-     values ($1, $2, $3, $4, true, $5) returning *`,
-    [email, input.displayName.trim(), input.role, passwordHash, input.actorEmail],
+    `insert into ${TABLE} (email, display_name, role, password_hash, is_active, created_by, salon_id, branch_id)
+     values ($1, $2, $3, $4, true, $5, $6, $7) returning *`,
+    [email, input.displayName.trim(), input.role, passwordHash, input.actorEmail, input.role === "owner" ? null : input.salonId, input.role === "owner" ? null : input.branchId],
   );
   return publicAccount(rowToAccount(rows[0]));
 }
@@ -348,6 +368,8 @@ export async function updateStaffAccount(
     email?: string;
     displayName?: string;
     role?: StaffRole;
+    salonId?: string | null;
+    branchId?: string | null;
     isActive?: boolean;
     password?: string;
   },
@@ -363,6 +385,8 @@ export async function updateStaffAccount(
   }
 
   const nextRole = patch.role ?? current.role;
+  const nextSalonId = nextRole === "owner" ? null : patch.salonId !== undefined ? patch.salonId : current.salonId;
+  const nextBranchId = nextRole === "owner" ? null : patch.branchId !== undefined ? patch.branchId : current.branchId;
   const nextActive = patch.isActive ?? current.isActive;
 
   // Never allow the salon to run without an active owner.
@@ -380,6 +404,8 @@ export async function updateStaffAccount(
       email: nextEmail,
       displayName: patch.displayName?.trim() || current.displayName,
       role: nextRole,
+      salonId: nextSalonId,
+      branchId: nextBranchId,
       isActive: nextActive,
       updatedAt: now,
       passwordHash: patch.password ? hashPassword(patch.password) : (memory.get(current.email) as StaffRecord).passwordHash,
@@ -396,6 +422,8 @@ export async function updateStaffAccount(
             role = $4,
             is_active = $5,
             password_hash = coalesce($6, password_hash),
+            salon_id = $7,
+            branch_id = $8,
             updated_at = now()
       where id = $1
       returning *`,
@@ -406,6 +434,8 @@ export async function updateStaffAccount(
       nextRole,
       nextActive,
       patch.password ? hashPassword(patch.password) : null,
+      nextSalonId,
+      nextBranchId,
     ],
   );
   return publicAccount(rowToAccount(rows[0]));

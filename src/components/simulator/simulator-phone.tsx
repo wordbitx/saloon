@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ArrowRight,
   BatteryFull,
@@ -17,6 +17,14 @@ import {
 } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
 import { SimulatorMessage } from "@/lib/simulator-engine";
+
+function subscribeToSystemTheme(callback: () => void) {
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+function systemIsDark() { return window.matchMedia("(prefers-color-scheme: dark)").matches; }
+function serverSystemIsDark() { return false; }
 
 interface SimulatorPhoneProps {
   messages: SimulatorMessage[];
@@ -42,18 +50,14 @@ export default function SimulatorPhone({
   onToggleOverride,
 }: SimulatorPhoneProps) {
   const { settings, theme } = useSalon();
-  const [waTheme, setWaTheme] = useState<"light" | "dark">("light");
+  const prefersDark = useSyncExternalStore(subscribeToSystemTheme, systemIsDark, serverSystemIsDark);
+  const resolvedTheme = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
+  const appearanceKey = `${theme}:${resolvedTheme}`;
+  const [appearance, setAppearance] = useState<{ key: string; value: "light" | "dark" }>({ key: appearanceKey, value: resolvedTheme });
+  // A manual phone toggle lasts until the site/device theme changes.
+  if (appearance.key !== appearanceKey) setAppearance({ key: appearanceKey, value: resolvedTheme });
   const [clock, setClock] = useState("9:41");
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (theme === "dark") setWaTheme("dark");
-    else if (theme === "light") setWaTheme("light");
-    else {
-      const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setWaTheme(dark ? "dark" : "light");
-    }
-  }, [theme]);
+  const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const tick = () => setClock(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
@@ -63,10 +67,11 @@ export default function SimulatorPhone({
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const chat = chatRef.current;
+    if (chat) chat.scrollTop = chat.scrollHeight;
   }, [messages, isTyping]);
 
-  const light = waTheme === "light";
+  const light = (appearance.key === appearanceKey ? appearance.value : resolvedTheme) === "light";
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
@@ -78,7 +83,7 @@ export default function SimulatorPhone({
         </span>
         <button
           type="button"
-          onClick={() => setWaTheme(light ? "dark" : "light")}
+          onClick={() => setAppearance({ key: appearanceKey, value: light ? "dark" : "light" })}
           className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 transition ${
             light
               ? "border-amber-200 bg-amber-50 text-amber-800"
@@ -149,7 +154,7 @@ export default function SimulatorPhone({
           )}
 
           {/* Chat */}
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 text-[11px]">
+          <div ref={chatRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 text-[11px]">
             <div className="flex justify-center">
               <span className={`rounded-md px-2 py-1 text-center text-[9px] ${light ? "bg-[#ffeecd] text-amber-900" : "bg-[#182229] text-amber-200/90"}`}>
                 🔒 End-to-end encrypted · simulated WordbitX conversation
@@ -223,7 +228,6 @@ export default function SimulatorPhone({
                 <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
               </div>
             )}
-            <div ref={chatEndRef} />
           </div>
 
           {/* Input bar */}
