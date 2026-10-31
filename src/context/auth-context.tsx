@@ -10,6 +10,8 @@ export type AuthUser = {
   email: string;
   displayName: string;
   role: StaffRole;
+  salonId: string | null;
+  branchId: string | null;
   backend: AuthBackend;
 };
 
@@ -26,6 +28,8 @@ const DEMO_USER: AuthUser = {
   email: "demo@glowsalon.pk",
   displayName: "Salon Owner",
   role: "owner",
+  salonId: null,
+  branchId: null,
   backend: "memory",
 };
 
@@ -35,9 +39,14 @@ export function AuthProvider({ user, children }: { user: AuthUser; children: Rea
   const router = useRouter();
 
   const signOut = useCallback(async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/admin/login");
-    router.refresh();
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error("Sign out failed");
+      router.replace("/");
+      router.refresh();
+    } catch {
+      window.alert("Sign out nahi hua. Connection check karke dobara try karein.");
+    }
   }, [router]);
 
   const value = useMemo<AuthValue>(

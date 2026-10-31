@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { isStaffRole, type StaffRole } from "@/lib/auth/roles";
 
@@ -9,6 +9,8 @@ export type SessionUser = {
   email: string;
   displayName: string;
   role: StaffRole;
+  salonId: string | null;
+  branchId: string | null;
   backend: AuthBackend;
 };
 
@@ -17,18 +19,13 @@ type TokenPayload = SessionUser & { exp: number };
 export const SESSION_COOKIE = "wbx_admin_session";
 export const SESSION_TTL_SECONDS = 60 * 60 * 8;
 
-/**
- * Signing secret. A dedicated AUTH_SECRET is best; otherwise we derive a
- * deployment-unique value so public demo links cannot forge admin cookies with
- * the fallback constant.
- */
+/** A fixed AUTH_SECRET is required for sessions to survive restarts/instances. */
 function authSecret(): string {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
-  const seed = [process.env.DATABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, process.env.NEXT_PUBLIC_SUPABASE_URL]
-    .filter(Boolean)
-    .join("|");
-  if (seed) return `wbx-derived-${createHash("sha256").update(seed).digest("hex")}`;
-  return "wordbitx-local-dev-secret-change-me-in-production";
+  // Process-local demos get an unpredictable key, never a public constant or
+  // a potentially guessable database URL. Multi-instance deployments must set AUTH_SECRET.
+  const globals = globalThis as typeof globalThis & { __wbxEphemeralSessionSecret?: string };
+  return (globals.__wbxEphemeralSessionSecret ??= randomBytes(48).toString("base64url"));
 }
 
 function sign(payload: string) {
@@ -58,6 +55,8 @@ export function verifySessionToken(token: string | undefined | null): SessionUse
       email: parsed.email,
       displayName: parsed.displayName,
       role: parsed.role,
+      salonId: typeof parsed.salonId === "string" ? parsed.salonId : null,
+      branchId: typeof parsed.branchId === "string" ? parsed.branchId : null,
       backend: parsed.backend === "database" ? "database" : "memory",
     };
   } catch {

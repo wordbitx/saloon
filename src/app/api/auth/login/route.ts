@@ -55,7 +55,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const account = await authenticateStaff(email, password);
+  let account;
+  try {
+    account = await authenticateStaff(email, password);
+  } catch {
+    return NextResponse.json({ error: "Staff database available nahi hai. DATABASE_URL check karein aur dobara try karein." }, { status: 503 });
+  }
   if (!account) {
     recordFailure(key);
     return NextResponse.json({ error: "Email ya password ghalat hai." }, { status: 401 });

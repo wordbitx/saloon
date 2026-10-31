@@ -31,7 +31,8 @@ export const SLOT_TIMES = [
 ];
 
 export const isActive = (booking: Booking) => booking.status !== "cancelled";
-export const isToday = (booking: Booking) => booking.date === "Today";
+// Historical sample rows use "Today"; managed bookings use stable ISO dates.
+export const isToday = (booking: Booking) => booking.date === "Today" || booking.date === new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
 export const money = (amount: number) => `PKR ${Math.round(amount).toLocaleString("en-PK")}`;
 export const sumAmount = (rows: Booking[]) => rows.reduce((total, row) => total + row.amountPKR, 0);
 

@@ -1,13 +1,11 @@
 "use client";
 
 import React from "react";
-import { ArrowUpRight, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
-import { useSalon } from "@/context/salon-context";
+import Link from "next/link";
+import { ArrowUpRight, MapPin, ShieldCheck } from "lucide-react";
 import { WORDBITX_COMPANY } from "@/lib/constants";
 
 export default function Footer() {
-  const { setActiveTab } = useSalon();
-
   return (
     <footer className="border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#030814] text-slate-600 dark:text-slate-400 py-12 px-4 sm:px-6 lg:px-8 transition-colors">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 text-xs">
@@ -37,53 +35,54 @@ export default function Footer() {
             Core Architecture
           </div>
           <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
+            <li><Link href="/products" className="hover:text-[#1CA830] transition-colors">Salon products &amp; shop</Link></li>
             <li>
-              <button
-                onClick={() => setActiveTab("simulator")}
+              <Link
+                href="/simulator"
                 className="hover:text-[#1CA830] transition-colors"
               >
                 Missed Call Recovery Engine
-              </button>
+              </Link>
             </li>
             <li>
-              <button
-                onClick={() => setActiveTab("simulator")}
+              <Link
+                href="/simulator"
                 className="hover:text-[#1CA830] transition-colors"
               >
                 Off-Hours WhatsApp Auto-Slotted Booking
-              </button>
+              </Link>
             </li>
             <li>
-              <button
-                onClick={() => setActiveTab("simulator")}
+              <Link
+                href="/simulator"
                 className="hover:text-[#1CA830] transition-colors"
               >
                 Stylist Loyalty Routing (&ldquo;Hina se hi&rdquo;)
-              </button>
+              </Link>
             </li>
             <li>
-              <button
-                onClick={() => setActiveTab("dashboard")}
+              <Link
+                href="/dashboard"
                 className="hover:text-[#1CA830] transition-colors"
               >
                 Waitlist Cancellation Backfill
-              </button>
+              </Link>
             </li>
             <li>
-              <button
-                onClick={() => setActiveTab("tenant-lab")}
+              <Link
+                href="/security"
                 className="hover:text-[#1CA830] transition-colors"
               >
                 Supabase RLS Tenant Isolation
-              </button>
+              </Link>
             </li>
             <li>
-              <button
-                onClick={() => setActiveTab("pricing")}
+              <Link
+                href="/pricing"
                 className="hover:text-[#1CA830] transition-colors"
               >
                 Meta Graph API v21 Webhooks
-              </button>
+              </Link>
             </li>
           </ul>
         </div>

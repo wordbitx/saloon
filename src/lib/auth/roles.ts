@@ -27,12 +27,15 @@ export type Capability =
   | "bookings.edit"
   | "bookings.delete"
   | "bookings.status"
+  | "schedule.manage"
   | "customers.view"
+  | "customers.manage"
   | "inbox.manage"
   | "waitlist.manage"
   | "services.view"
   | "staff.view"
   | "registry.manage"
+  | "shop.manage"
   | "reports.view"
   | "settings.manage"
   | "audit.view"
@@ -46,12 +49,15 @@ const CAPABILITIES: Record<StaffRole, Capability[]> = {
     "bookings.edit",
     "bookings.delete",
     "bookings.status",
+    "schedule.manage",
     "customers.view",
+    "customers.manage",
     "inbox.manage",
     "waitlist.manage",
     "services.view",
     "staff.view",
     "registry.manage",
+    "shop.manage",
     "reports.view",
     "settings.manage",
     "audit.view",
@@ -63,6 +69,7 @@ const CAPABILITIES: Record<StaffRole, Capability[]> = {
     "bookings.create",
     "bookings.edit",
     "bookings.status",
+    "schedule.manage",
     "customers.view",
     "inbox.manage",
     "waitlist.manage",
@@ -75,10 +82,12 @@ const CAPABILITIES: Record<StaffRole, Capability[]> = {
     "bookings.view",
     "bookings.create",
     "bookings.status",
+    "schedule.manage",
     "customers.view",
     "inbox.manage",
     "waitlist.manage",
     "services.view",
+    "staff.view",
   ],
 };
 

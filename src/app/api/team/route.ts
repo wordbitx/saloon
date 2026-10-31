@@ -3,6 +3,7 @@ import { badRequest, guard, readJson } from "@/lib/auth/api";
 import { passwordProblem } from "@/lib/auth/password";
 import { hasCapability, isStaffRole } from "@/lib/auth/roles";
 import { AuthStoreError, createStaffAccount, getAuthBackendInfo, listStaffAccounts } from "@/lib/auth/store";
+import { getWorkspace } from "@/lib/workspaces/store";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
     email?: string;
     displayName?: string;
     role?: string;
+    salonId?: string | null;
+    branchId?: string | null;
     password?: string;
   }>(request);
 
@@ -42,11 +45,20 @@ export async function POST(request: Request) {
   if (problem) return badRequest(problem);
 
   try {
+    const salonId = role === "owner" ? null : typeof body?.salonId === "string" ? body.salonId : null;
+    const branchId = role === "owner" ? null : typeof body?.branchId === "string" ? body.branchId : null;
+    if (role !== "owner") {
+      const workspace = salonId ? await getWorkspace(salonId) : null;
+      if (!workspace) return badRequest("Manager / reception ke liye ek salon select karein.");
+      if (!branchId || !workspace.settings.branches.some((branch) => branch.id === branchId)) return badRequest("Is salon ki ek specific branch select karein.");
+    }
     const account = await createStaffAccount({
       email: body?.email ?? "",
       displayName: body?.displayName ?? "",
       password,
       role,
+      salonId,
+      branchId,
       actorEmail: actor.email,
     });
     return NextResponse.json({ account }, { status: 201 });

@@ -1,197 +1,149 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  BatteryFull,
+  BellRing,
   CheckCheck,
+  Pause,
   PhoneMissed,
+  Play,
   RotateCcw,
-  SignalHigh,
-  Wifi,
 } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
 
 type Turn = {
-  side: "in" | "out";
+  side: "customer" | "salon";
   text: string;
-  minutesAgo?: string;
 };
 
+// This is an illustrative conversation, not a connection to WhatsApp. Keep its
+// service and price consistent with the sample salon menu.
 const SCRIPT: Turn[] = [
-  {
-    side: "in",
-    text: "Assalam o alaikum! Main Saturday ko bridal makeup ki booking chahti hoon — Barat wali.",
-    minutesAgo: "Just now",
-  },
-  {
-    side: "out",
-    text: "Walaikum Assalam! Signature Bridal Makeup (Barat) PKR 45,000 · 3 ghante. December ki kon si tarikh pasand hai?",
-    minutesAgo: "Just now",
-  },
-  {
-    side: "in",
-    text: "13th December, shaam 5 baje.",
-    minutesAgo: "Just now",
-  },
-  {
-    side: "out",
-    text: "Done! 13 Dec, 5:00 PM — Aliya Noor (Bridal glam artist) ke saath Signature Bridal Makeup confirm. Aap ki WhatsApp pe reminder bhej di. Shukriya!",
-    minutesAgo: "Just now",
-  },
-  {
-    side: "in",
-    text: "Shukriya! Ghanti bhi aa gai thi, reply ab nahi kar paati.",
-    minutesAgo: "Just now",
-  },
-  {
-    side: "out",
-    text: "Ghanti miss hui thi — khud WhatsApp pe reply kar diya gaya. Booking rahe gi confirm. Naya number kabhi call karna, welcome hai!",
-    minutesAgo: "Just now",
-  },
+  { side: "customer", text: "Assalam o Alaikum, facial ka rate kya hai?" },
+  { side: "salon", text: "Walaikum Assalam! HydraFacial PKR 7,500 (60 min). Kal 02:00 PM ka slot khali hai — book kar dun?" },
+  { side: "customer", text: "Haan please!" },
+  { side: "salon", text: "Zaroor — aap ka naam bata dein?" },
+  { side: "customer", text: "Mahnoor." },
+  { side: "salon", text: "Shukriya Mahnoor! Aap ka sample appointment kal 02:00 PM ke liye confirm hai. Reminder bhi tayyar hai. ✨" },
 ];
 
 export default function HomePhoneDemo() {
   const { settings } = useSalon();
-  const [turn, setTurn] = useState(0);
-  const [shown, setShown] = useState<Turn[]>([]);
-  const lock = useRef(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(1);
+  const [playing, setPlaying] = useState(true);
+  const conversationRef = useRef<HTMLDivElement>(null);
+  const salonName = settings.name === "Your salon" ? "Glow Salon, Lahore" : settings.name;
 
+  // Respect the user's motion preference: show the whole example without autoplay.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [shown]);
-
-  // Auto-play: shows one turn after another so a visitor immediately sees the
-  // full salon flow — ghanti → question → booking confirmation.
-  useEffect(() => {
-    if (turn >= SCRIPT.length) return;
-    const timer = setTimeout(() => {
-      if (!lock.current) {
-        setShown((prev) => [...prev, SCRIPT[turn]]);
-        setTurn((current) => current + 1);
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handleMotionChange = () => {
+      if (motion.matches) {
+        setVisibleCount(SCRIPT.length);
+        setPlaying(false);
       }
-    }, 1100);
-    return () => clearTimeout(timer);
-  }, [turn]);
+    };
+    handleMotionChange();
+    motion.addEventListener("change", handleMotionChange);
+    return () => motion.removeEventListener("change", handleMotionChange);
+  }, []);
 
-  const reset = () => {
-    lock.current = true;
-    setShown([]);
-    setTurn(0);
-    setTimeout(() => (lock.current = false), 100);
+  // Play the conversation one message at a time, then start again after a pause.
+  // This never sends a message or changes the sample booking data.
+  useEffect(() => {
+    if (!playing) return;
+    const timer = window.setTimeout(() => {
+      setVisibleCount((count) => (count >= SCRIPT.length ? 1 : count + 1));
+    }, visibleCount >= SCRIPT.length ? 6000 : 1900);
+    return () => window.clearTimeout(timer);
+  }, [playing, visibleCount]);
+
+  useEffect(() => {
+    // Scroll only the conversation, not the entire page when new messages arrive.
+    const conversation = conversationRef.current;
+    if (conversation) conversation.scrollTop = conversation.scrollHeight;
+  }, [visibleCount]);
+
+  const replay = () => {
+    setVisibleCount(1);
+    setPlaying(true);
   };
-
-  const started = shown.length > 0;
+  const nextIsSalon = SCRIPT[visibleCount]?.side === "salon";
 
   return (
-    <div className="relative mx-auto w-full max-w-[280px] select-none">
-      {/* Phone body */}
-      <div className="rounded-[40px] border-[8px] border-[#14171c] bg-[#14171c] shadow-2xl">
-        {/* Status bar */}
-        <div className="flex items-center justify-between bg-[#14171c] px-5 pt-2 text-[9px] font-semibold text-white">
-          <span className="tracking-wide">9:41</span>
-          <span className="flex items-center gap-1">
-            <SignalHigh className="h-3 w-3" />
-            <Wifi className="h-3 w-3" />
-            <BatteryFull className="h-3 w-3" />
-          </span>
-        </div>
-
-        {/* Chat screen */}
-        <div className="h-[460px] overflow-hidden bg-[#efeae2]">
-          <div className="flex items-center justify-between bg-[#075e54] px-3 py-2 text-white">
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold leading-tight truncate">{settings.name}</div>
-              <div className="text-[9px] text-white/70 leading-tight flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" /> online
-              </div>
+    <div className="relative mx-auto w-full max-w-[370px] px-2 sm:px-0">
+      <div className="rounded-[38px] border border-slate-300 bg-slate-100 p-2.5 shadow-[0_24px_80px_rgba(5,39,103,0.14)] dark:border-[#142a4f] dark:bg-[#061128] dark:shadow-[0_24px_90px_rgba(0,0,0,0.3)]">
+        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white dark:border-[#142a4f] dark:bg-[#030a19]">
+          <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-4 dark:border-[#142341] dark:bg-[#07142c]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1ca830] text-sm font-extrabold text-white">
+              {salonName.charAt(0).toUpperCase()}
             </div>
-            <span className="text-[14px] font-semibold">···</span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-[#102a50] dark:text-white">{salonName}</p>
+              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-[#78db88]">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Auto-reply demo
+              </p>
+            </div>
+            <span className="rounded-md border border-dashed border-emerald-500/60 px-1.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-[#78db88]">
+              Sample
+            </span>
           </div>
 
-          {/* Chat bubbles */}
-          <div className="space-y-2 overflow-y-auto px-2.5 py-3 h-[390px]">
-            {shown.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex ${msg.side === "out" ? "justify-end" : "justify-start"}`}
-              >
+          <div
+            ref={conversationRef}
+            role="log"
+            aria-label="Illustrative salon conversation"
+            aria-live="off"
+            className="h-[340px] overflow-y-auto overscroll-contain bg-[#f7faf8] px-3 py-4 sm:h-[370px] dark:bg-[#030a19]"
+          >
+            <div className="flex min-h-full flex-col justify-end gap-2.5">
+              {SCRIPT.slice(0, visibleCount).map((message, index) => (
                 <div
-                  className={`max-w-[80%] rounded-2xl px-2.5 py-1.5 text-[10px] leading-relaxed shadow-sm ${
-                    msg.side === "out"
-                      ? "bg-[#dcf8c6] text-[#111b21] rounded-br-sm"
-                      : "bg-white text-[#111b21] rounded-bl-sm"
-                  }`}
+                  key={index}
+                  className={`home-message-enter flex ${message.side === "customer" ? "justify-end" : "justify-start"}`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
-                  <div
-                    className={`mt-0.5 flex items-center justify-end gap-0.5 text-[7px] ${
-                      msg.side === "out" ? "text-emerald-700" : "text-slate-400"
-                    }`}
-                  >
-                    {msg.side === "out" ? <CheckCheck className="h-2.5 w-2.5" /> : null}
-                    <span>{msg.minutesAgo}</span>
+                  <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[12px] leading-[1.5] shadow-sm ${message.side === "customer" ? "rounded-br-md bg-[#e9f0fa] text-[#182c4f] dark:bg-[#0c1d3c] dark:text-slate-100" : "rounded-bl-md bg-[#daf3dc] text-[#12351e] dark:bg-[#103c24] dark:text-[#e5f9e8]"}`}>
+                    <p>{message.text}</p>
+                    <span className={`mt-1 flex items-center justify-end gap-1 text-[9px] ${message.side === "salon" ? "text-emerald-700 dark:text-emerald-300/70" : "text-slate-500 dark:text-slate-400"}`}>
+                      {message.side === "salon" && <CheckCheck size={12} />} Demo
+                    </span>
                   </div>
                 </div>
-              </div>
-            ))}
-            {turn < SCRIPT.length && (
-              <div className="flex justify-end">
-                <div className="flex gap-1 rounded-2xl rounded-br-sm bg-[#dcf8c6] px-2.5 py-2 shadow-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce" />
+              ))}
+              {playing && nextIsSalon && (
+                <div className="flex justify-start" aria-label="Sample reply is being typed">
+                  <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-[#daf3dc] px-3 py-2.5 dark:bg-[#103c24]">
+                    <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
+                  </div>
                 </div>
-              </div>
-            )}
-            <div ref={endRef} />
+              )}
+            </div>
           </div>
 
-          {/* Input bar (decorative) */}
-          <div className="flex items-center gap-2 bg-[#f0f2f5] px-2.5 py-2">
-            <span className="rounded-full bg-white px-2.5 py-1 text-[10px] text-slate-400">
-              Type a message
-            </span>
-            <span className="rounded-full bg-[#075e54] px-2.5 py-1 text-[9px] font-semibold text-white">
-              Send
-            </span>
+          <div className="border-t border-slate-200 bg-slate-50 p-3 dark:border-[#142341] dark:bg-[#07142c]">
+            <div className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-[11px] text-slate-500 dark:border-[#142a4f] dark:bg-[#0a1933] dark:text-slate-400">
+              Simulated chat · Phase 1 demo
+            </div>
           </div>
-        </div>
-
-        {/* Home indicator */}
-        <div className="flex justify-center bg-[#14171c] pb-1.5">
-          <span className="h-1 w-8 rounded-full bg-white/60" />
         </div>
       </div>
 
-      {/* Floating call badge */}
-      <div className="absolute -left-2 top-40 flex items-center gap-1.5 rounded-full border border-amber-200 bg-white/95 px-2 py-1 text-[8px] font-bold text-amber-700 shadow-lg dark:bg-slate-900/95 dark:text-amber-300">
-        <PhoneMissed className="h-3 w-3" />
-        Missed call — 4s mein reply bhej diya
+      <div className="absolute -left-1 top-[76px] z-10 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-[#17345d] shadow-lg sm:-left-9 dark:border-[#1b3157] dark:bg-[#07142c] dark:text-slate-100">
+        <PhoneMissed size={15} className="text-emerald-500 dark:text-[#78db88]" />
+        <span>Missed call → 4s reply <span className="text-emerald-600 dark:text-[#78db88]">· demo</span></span>
+      </div>
+      <div className="absolute -right-1 bottom-[98px] z-10 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-[#17345d] shadow-lg sm:-right-6 dark:border-[#1b3157] dark:bg-[#07142c] dark:text-slate-100">
+        <BellRing size={14} className="text-emerald-500 dark:text-[#78db88]" /> 2h before reminder
       </div>
 
-      {/* Replay control */}
-      <div className="mt-4 flex justify-center">
-        {!started ? (
-          <button
-            onClick={() => {
-              setShown([]);
-              setTurn(1);
-              setShown([SCRIPT[0]]);
-            }}
-            className="rounded-xl bg-[#052767] px-3.5 py-2 text-[10px] font-bold text-white shadow-lg"
-          >
-            Conversation play karein
-          </button>
-        ) : (
-          <button
-            onClick={reset}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[10px] font-bold text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Fir se chalayein
-          </button>
-        )}
+      <div className="mt-3 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+        <button type="button" onClick={() => setPlaying((value) => !value)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 transition hover:bg-slate-100 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-emerald-500 dark:hover:bg-[#0a1933] dark:hover:text-emerald-300" aria-label={playing ? "Pause sample conversation" : "Play sample conversation"}>
+          {playing ? <Pause size={13} /> : <Play size={13} />} {playing ? "Pause" : "Play"}
+        </button>
+        <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+        <button type="button" onClick={replay} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 transition hover:bg-slate-100 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-emerald-500 dark:hover:bg-[#0a1933] dark:hover:text-emerald-300">
+          <RotateCcw size={13} /> Replay demo
+        </button>
       </div>
     </div>
   );

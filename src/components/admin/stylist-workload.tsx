@@ -1,13 +1,19 @@
 "use client";
 
+/* Uploaded data URLs are intentionally rendered locally, not sent to an image optimizer. */
+/* eslint-disable @next/next/no-img-element */
+
 import React from "react";
 import { Armchair, TrendingUp, Wallet, Star, PhoneMissed, MessageCircle, Clock3 } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
+import { isToday } from "@/lib/salon-analytics";
+import { useWorkspaces } from "@/context/workspace-context";
 
 export default function StylistWorkload() {
   const { settings, bookings, repeatCustomers } = useSalon();
+  const { activeWorkspace } = useWorkspaces();
 
-  const todayBookings = bookings.filter((b) => b.date === "Today" && b.status !== "cancelled");
+  const todayBookings = bookings.filter((b) => isToday(b) && b.status !== "cancelled");
   const totalRevenue = todayBookings.reduce((sum, b) => sum + b.amountPKR, 0);
 
   const rows = settings.stylists.map((stylist) => {
@@ -29,7 +35,7 @@ export default function StylistWorkload() {
           <h3 className="mt-1 text-base font-bold text-[#052767] dark:text-white">Kaunsi stylist ki chair zyada bhari hai</h3>
           <p className="mt-0.5 text-[11px] text-slate-500">Bookings, revenue share aur loyal clients per stylist.</p>
         </div>
-        <span className="rounded-full bg-blue-50 px-2 py-1 text-[9px] font-bold text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">SAMPLE</span>
+        <span className="rounded-full bg-blue-50 px-2 py-1 text-[9px] font-bold text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">{activeWorkspace.isSample ? "SAMPLE" : "SELECTED SALON"}</span>
       </div>
 
       <div className="mt-4 space-y-3.5">
@@ -37,9 +43,7 @@ export default function StylistWorkload() {
           <div key={stylist.id}>
             <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  {stylist.name.slice(0, 1)}
-                </span>
+                {stylist.photoDataUrl ? <img src={stylist.photoDataUrl} alt={`${stylist.name} photo`} className="h-7 w-7 shrink-0 rounded-full object-cover" /> : <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">{stylist.name.slice(0, 1)}</span>}
                 <div className="min-w-0">
                   <strong className="block truncate text-slate-800 dark:text-white">{stylist.name}</strong>
                   <span className="block truncate text-[9px] text-slate-400">{stylist.specialty}</span>

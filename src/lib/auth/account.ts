@@ -6,6 +6,8 @@ export type StaffAccountView = {
   email: string;
   displayName: string;
   role: StaffRole;
+  salonId: string | null;
+  branchId: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

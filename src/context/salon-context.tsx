@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
@@ -16,6 +17,7 @@ import {
   ViewTab,
   WaitlistEntry,
 } from "@/types/salon";
+import { bookingDuration, bookingReference, findBookingConflict, type ScheduleClosure, type SlotCheckOptions } from "@/lib/booking-schedule";
 import {
   INITIAL_BOOKINGS,
   INITIAL_REPEAT_CUSTOMERS,
@@ -23,7 +25,7 @@ import {
   INITIAL_WAITLIST,
 } from "@/lib/constants";
 
-interface SalonContextType {
+export interface SalonContextType {
   // Navigation
   activeTab: ViewTab;
   setActiveTab: (tab: ViewTab) => void;
@@ -35,21 +37,22 @@ interface SalonContextType {
 
   // Bookings & Recovery
   bookings: Booking[];
-  addBooking: (booking: Booking) => void;
+  addBooking: (booking: Booking) => Promise<{ ok: boolean; message?: string }>;
   cancelBooking: (bookingId: string) => void;
   completeBooking: (bookingId: string) => void;
   /** Returns the conflicting booking for a stylist/date/time, or null when the slot is free. */
-  findSlotConflict: (stylistName: string, date: string, time: string, excludeId?: string) => Booking | null;
+  findSlotConflict: (stylistName: string, date: string, time: string, excludeId?: string, options?: SlotCheckOptions) => Booking | null;
   /** Edits any booking field (incl. custom price). Blocks a slot already taken by another client. */
-  updateBooking: (bookingId: string, patch: Partial<Booking>) => { ok: boolean; message?: string };
+  updateBooking: (bookingId: string, patch: Partial<Booking>) => Promise<{ ok: boolean; message?: string }>;
   /** Permanently removes a booking from the register. */
   deleteBooking: (bookingId: string) => void;
   /** Human readable slot state for UI: free | booked with details. */
   checkSlotAvailability: (
     stylistName: string,
     date: string,
-    time: string
-  ) => { available: boolean; conflict?: Booking; message?: string };
+    time: string,
+    options?: SlotCheckOptions
+  ) => { available: boolean; conflict?: Booking; closure?: ScheduleClosure; message?: string };
   waitlist: WaitlistEntry[];
   addWaitlistEntry: (entry: WaitlistEntry) => void;
   offerWaitlistEntry: (entryId: string) => void;
@@ -85,7 +88,34 @@ interface SalonContextType {
   exportCsv: () => void;
 }
 
-const SalonContext = createContext<SalonContextType | undefined>(undefined);
+export const SalonContext = createContext<SalonContextType | undefined>(undefined);
+
+type SiteTheme = "light" | "dark" | "system";
+const THEME_EVENT = "wordbitx-theme-change";
+let fallbackTheme: SiteTheme = "dark";
+let themeStorageAvailable = true;
+
+// The browser's saved preference is an external store. This keeps the server
+// render deterministic and also syncs theme changes between browser tabs.
+function getThemeSnapshot(): SiteTheme {
+  if (!themeStorageAvailable) return fallbackTheme;
+  try {
+    const saved = window.localStorage.getItem("wordbitx-theme");
+    return saved === "light" || saved === "dark" || saved === "system" ? saved : "dark";
+  } catch {
+    themeStorageAvailable = false;
+    return fallbackTheme;
+  }
+}
+function subscribeToTheme(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(THEME_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(THEME_EVENT, callback);
+  };
+}
+function getServerThemeSnapshot(): SiteTheme { return "dark"; }
 
 export function SalonProvider({
   children,
@@ -114,20 +144,13 @@ export function SalonProvider({
   const [morningBriefOpen, setMorningBriefOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Theme (Light default per user request)
-  const [theme, setThemeState] = useState<"light" | "dark" | "system">("light");
+  // The reference design opens in dark mode; an existing user choice still wins.
+  const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
 
   useEffect(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem("wordbitx-theme") : null;
-    if (saved === "dark" || saved === "light" || saved === "system") {
-      setThemeState(saved);
-    } else {
-      setThemeState("light");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+    // During hydration the server snapshot may precede a saved browser choice.
+    // Wait for the browser snapshot so we never overwrite the saved preference.
+    if (theme !== getThemeSnapshot()) return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
       const resolved = theme === "system" ? (media.matches ? "dark" : "light") : theme;
@@ -142,14 +165,13 @@ export function SalonProvider({
     };
     apply();
     media.addEventListener("change", apply);
-    window.localStorage.setItem("wordbitx-theme", theme);
     return () => media.removeEventListener("change", apply);
   }, [theme]);
 
-  const setTheme = (t: "light" | "dark" | "system") => {
-    setThemeState(t);
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("wordbitx-theme", t);
+  const setTheme = (t: SiteTheme) => {
+    fallbackTheme = t;
+    try { window.localStorage.setItem("wordbitx-theme", t); } catch { themeStorageAvailable = false; }
+    window.dispatchEvent(new Event(THEME_EVENT));
     const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const resolved = t === "system" ? (systemDark ? "dark" : "light") : t;
     document.documentElement.dataset.theme = resolved;
@@ -181,16 +203,16 @@ export function SalonProvider({
     showToast("Salon profile reset to the default workspace values.");
   };
 
-  const addBooking = (booking: Booking) => {
-    const conflict = findSlotConflict(booking.stylistName, booking.date, booking.time);
+  const addBooking = async (booking: Booking) => {
+    const conflict = findSlotConflict(booking.stylistName, booking.date, booking.time, undefined, { stylistId: booking.stylistId, durationMinutes: bookingDuration(booking, settings.services) });
     if (conflict) {
-      showToast(
-        `${booking.date} ${booking.time} already booked hai (${conflict.customerName}). WhatsApp par contact karein ya koi aur slot chunein.`
-      );
-      return;
+      const message = `${booking.date} ${booking.time} already booked hai (${conflict.customerName}). Koi aur slot chunein.`;
+      showToast(message);
+      return { ok: false, message };
     }
     setBookings((prev) => [booking, ...prev]);
     showToast(`✅ +1 Booking Recovered! Added to Owner Dashboard: ${booking.serviceName} (PKR ${booking.amountPKR.toLocaleString()})`);
+    return { ok: true };
   };
 
   const cancelBooking = (bookingId: string) => {
@@ -255,15 +277,15 @@ export function SalonProvider({
     showToast(`${target?.customerName || "Customer"} ki service complete mark hui. Review request preview tayyar hai — WhatsApp message send nahi hua.`);
   };
 
-  const updateBooking = (bookingId: string, patch: Partial<Booking>) => {
+  const updateBooking = async (bookingId: string, patch: Partial<Booking>) => {
     const current = bookings.find((booking) => booking.id === bookingId);
     if (!current) return { ok: false, message: "Booking nahi mili." };
     const next: Booking = { ...current, ...patch };
     const slotChanged =
-      next.stylistName !== current.stylistName || next.date !== current.date || next.time !== current.time;
+      next.stylistName !== current.stylistName || next.stylistId !== current.stylistId || next.date !== current.date || next.time !== current.time || next.serviceId !== current.serviceId || next.serviceName !== current.serviceName;
     const reactivated = current.status === "cancelled" && next.status !== "cancelled";
     if (next.status !== "cancelled" && (slotChanged || reactivated)) {
-      const conflict = findSlotConflict(next.stylistName, next.date, next.time, bookingId);
+      const conflict = findSlotConflict(next.stylistName, next.date, next.time, bookingId, { stylistId: next.stylistId, durationMinutes: bookingDuration(next, settings.services) });
       if (conflict) {
         return {
           ok: false,
@@ -286,42 +308,16 @@ export function SalonProvider({
     setWaitlist((prev) => [entry, ...prev]);
   };
 
-  /**
-   * A stylist can only hold one chair at one time. Compare the clock hour so
-   * "04:30 PM" and "4:30 PM" are treated as the same slot.
-   */
-  const toHour = (time: string): number | null => {
-    const match = time.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/i);
-    if (!match) return null;
-    let hour = Number(match[1]) % 12;
-    const meridiem = match[3]?.toUpperCase();
-    if (meridiem === "PM") hour += 12;
-    else if (!meridiem && hour < 8) hour += 12; // "Now"/walk-in style entries
-    return hour;
-  };
+  const findSlotConflict: SalonContextType["findSlotConflict"] = (stylistName, date, time, excludeId, options) =>
+    findBookingConflict(bookings, settings.services, stylistName, date, time, excludeId, options);
 
-  const findSlotConflict = (stylistName: string, date: string, time: string, excludeId?: string): Booking | null => {
-    const targetHour = toHour(time);
-    return (
-      bookings.find((booking) => {
-        if (booking.status === "cancelled") return false;
-        if (excludeId && booking.id === excludeId) return false;
-        if (booking.stylistName !== stylistName) return false;
-        if (booking.date !== date) return false;
-        const bookingHour = toHour(booking.time);
-        if (targetHour === null || bookingHour === null) return false;
-        return bookingHour === targetHour;
-      }) ?? null
-    );
-  };
-
-  const checkSlotAvailability = (stylistName: string, date: string, time: string) => {
-    const conflict = findSlotConflict(stylistName, date, time);
+  const checkSlotAvailability: SalonContextType["checkSlotAvailability"] = (stylistName, date, time, options) => {
+    const conflict = findSlotConflict(stylistName, date, time, undefined, options);
     if (!conflict) return { available: true };
     return {
       available: false,
       conflict,
-      message: `Ye slot already booked hai — ${conflict.customerName} ka ${conflict.serviceName} (${conflict.time}). Same time par dobara book karne ke liye WhatsApp par contact karein, ya koi aur slot chunein.`,
+      message: `Ye slot already booked hai — ${conflict.customerName} ka ${conflict.serviceName} (${conflict.time}). Koi aur slot chunein.`,
     };
   };
 
@@ -354,7 +350,7 @@ export function SalonProvider({
     ];
 
     const rows = bookings.map((b) => [
-      b.id,
+      bookingReference(b),
       b.salonId,
       b.customerName,
       `••••${b.customerPhone.replace(/\D/g, "").slice(-4)}`,

@@ -3,6 +3,7 @@
 import React from "react";
 import { Scissors, Sparkles, Brush, Droplets, TrendingUp, ArrowUpRight } from "lucide-react";
 import { useSalon } from "@/context/salon-context";
+import { useWorkspaces } from "@/context/workspace-context";
 import { ServiceCategory } from "@/types/salon";
 
 const categoryMeta: Record<ServiceCategory, { icon: typeof Scissors; bar: string; tint: string }> = {
@@ -14,6 +15,7 @@ const categoryMeta: Record<ServiceCategory, { icon: typeof Scissors; bar: string
 
 export default function SalonServiceMix() {
   const { settings, bookings } = useSalon();
+  const { activeWorkspace } = useWorkspaces();
 
   const active = bookings.filter((b) => b.status !== "cancelled");
 
@@ -38,7 +40,7 @@ export default function SalonServiceMix() {
           <h3 className="mt-1 text-base font-bold text-[#052767] dark:text-white"> kis category ki demand zyada hai</h3>
           <p className="mt-0.5 text-[11px] text-slate-500">Service categories ke hisaab se bookings aur revenue.</p>
         </div>
-        <span className="rounded-full bg-rose-50 px-2 py-1 text-[9px] font-bold text-rose-800 dark:bg-rose-950/40 dark:text-rose-300">SAMPLE</span>
+        <span className="rounded-full bg-rose-50 px-2 py-1 text-[9px] font-bold text-rose-800 dark:bg-rose-950/40 dark:text-rose-300">{activeWorkspace.isSample ? "SAMPLE" : "SELECTED SALON"}</span>
       </div>
 
       <div className="mt-4 space-y-3.5">

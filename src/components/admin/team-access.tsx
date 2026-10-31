@@ -6,6 +6,7 @@ import {
   ShieldAlert, ShieldCheck, Trash2, UserRound, Users, X,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { useWorkspaces } from "@/context/workspace-context";
 import type { StaffAccountView } from "@/lib/auth/account";
 import { ROLE_DESCRIPTION, ROLE_LABEL, STAFF_ROLES, type StaffRole } from "@/lib/auth/roles";
 
@@ -23,8 +24,10 @@ const PERMISSION_ROWS: { label: string; owner: boolean; manager: boolean; recept
   { label: "Naya booking / walk-in add karna", owner: true, manager: true, reception: true },
   { label: "Booking status (complete / cancel)", owner: true, manager: true, reception: true },
   { label: "Recovery inbox & waitlist", owner: true, manager: true, reception: true },
+  { label: "Staff aur branches dekhna", owner: true, manager: true, reception: true },
   { label: "Booking edit karna", owner: true, manager: true, reception: false },
   { label: "Reports / CSV export", owner: true, manager: true, reception: false },
+  { label: "Customer add, edit ya delete karna", owner: true, manager: false, reception: false },
   { label: "Booking delete karna", owner: true, manager: false, reception: false },
   { label: "Salon setup & services", owner: true, manager: false, reception: false },
   { label: "Staff logins banana / reset karna", owner: true, manager: false, reception: false },
@@ -35,14 +38,18 @@ type Draft = {
   displayName: string;
   email: string;
   role: StaffRole;
+  salonId: string;
+  branchId: string;
   password: string;
   isActive: boolean;
 };
 
-const emptyDraft = (role: StaffRole = "reception"): Draft => ({
+const emptyDraft = (salonId: string, role: StaffRole = "reception"): Draft => ({
   displayName: "",
   email: "",
   role,
+  salonId,
+  branchId: "",
   password: "",
   isActive: true,
 });
@@ -64,6 +71,7 @@ function formatDate(value: string | null) {
 
 export default function TeamAccess() {
   const { user } = useAuth();
+  const { workspaces, activeWorkspace } = useWorkspaces();
   const [accounts, setAccounts] = useState<StaffAccountView[]>([]);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,6 +134,8 @@ export default function TeamAccess() {
           displayName: draft.displayName,
           email: draft.email,
           role: draft.role,
+          salonId: draft.role === "owner" ? null : draft.salonId,
+          branchId: draft.role === "owner" ? null : draft.branchId,
           password: draft.password,
         }),
       });
@@ -175,7 +185,7 @@ export default function TeamAccess() {
     setSaving(true);
     const ok = await patchAccount(
       draft.id,
-      { displayName: draft.displayName, email: draft.email, role: draft.role, isActive: draft.isActive },
+      { displayName: draft.displayName, email: draft.email, role: draft.role, salonId: draft.role === "owner" ? null : draft.salonId, branchId: draft.role === "owner" ? null : draft.branchId, isActive: draft.isActive },
       "Login details update ho gayin.",
     );
     setSaving(false);
@@ -233,14 +243,14 @@ export default function TeamAccess() {
           <h2 className="mt-1 text-xl font-bold text-[#052767] dark:text-white">Team logins & permissions</h2>
           <p className="mt-1 max-w-2xl text-xs text-slate-500 dark:text-slate-400">
             Manager ya reception ke liye login banayein. Wo sirf apne login se andar aa sakte hain, aur unhe wahi
-            sections dikhte hain jo aap ne role se assign kiye hain. Password reset aur delete sirf owner ke paas hai.
+            sections aur sirf wohi specific branch dikhti hai jo aap assign karein. Password reset aur delete sirf owner ke paas hai.
           </p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => void load()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:text-slate-200">
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
-          <button onClick={() => { setDraft(emptyDraft()); setError(""); }} className="inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-3.5 py-2.5 text-xs font-bold text-white hover:bg-[#178e29]">
+          <button onClick={() => { setDraft(emptyDraft(activeWorkspace.id)); setError(""); }} className="inline-flex items-center gap-1.5 rounded-lg bg-[#1CA830] px-3.5 py-2.5 text-xs font-bold text-white hover:bg-[#178e29]">
             <Plus size={14} /> Naya login
           </button>
         </div>
@@ -307,6 +317,7 @@ export default function TeamAccess() {
                     {account.displayName} {isSelf && <span className="ml-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Aap</span>}
                   </strong>
                   <span className="block truncate text-[10px] text-slate-500 dark:text-slate-400">{account.email}</span>
+                  <span className="block truncate text-[9px] text-emerald-700 dark:text-emerald-400">{account.role === "owner" ? "All salons / branches" : `${workspaces.find((workspace) => workspace.id === account.salonId)?.settings.name ?? "Salon not assigned / deleted"} · ${workspaces.find((workspace) => workspace.id === account.salonId)?.settings.branches.find((branch) => branch.id === account.branchId)?.name ?? "Branch not assigned / deleted"}`}</span>
                   <span className="mt-0.5 block text-[9px] text-slate-400 lg:hidden">
                     {ROLE_LABEL[account.role]} · {account.isActive ? "Active" : "Disabled"} · Last login {formatDate(account.lastLoginAt)}
                   </span>
@@ -328,7 +339,7 @@ export default function TeamAccess() {
 
               <div className="flex flex-wrap items-center justify-end gap-1.5">
                 <button
-                  onClick={() => { setDraft({ id: account.id, displayName: account.displayName, email: account.email, role: account.role, password: "", isActive: account.isActive }); setError(""); }}
+                  onClick={() => { setDraft({ id: account.id, displayName: account.displayName, email: account.email, role: account.role, salonId: account.salonId ?? "", branchId: account.branchId ?? "", password: "", isActive: account.isActive }); setError(""); }}
                   className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-bold text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:text-slate-200"
                 >
                   <Pencil size={11} /> Edit
@@ -453,6 +464,20 @@ export default function TeamAccess() {
                 </div>
               </div>
 
+              {draft.role !== "owner" && <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Assigned salon
+                  <select required value={draft.salonId} onChange={(event) => setDraft({ ...draft, salonId: event.target.value, branchId: "" })} className={input}>
+                    <option value="">Salon select karein</option>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.settings.name}</option>)}
+                  </select>
+                </label>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Assigned branch
+                  <select required value={draft.branchId} onChange={(event) => setDraft({ ...draft, branchId: event.target.value })} className={input}>
+                    <option value="">Branch select karein</option>{workspaces.find((workspace) => workspace.id === draft.salonId)?.settings.branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+                  </select>
+                </label>
+                <p className="text-[10px] leading-relaxed text-slate-500 sm:col-span-2">Manager / reception ko sirf isi branch ka dashboard aur records milenge; doosri branches nahi khulengi.</p>
+              </div>}
+              {draft.role === "owner" && <p className="rounded-lg bg-amber-50 p-2 text-[10px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Owner ko sab salons aur login management ka poora access milega.</p>}
               {!draft.id && (
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">
@@ -469,6 +494,7 @@ export default function TeamAccess() {
                 </div>
               )}
 
+              {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-[11px] font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{error}</p>}
               {draft.id && (
                 <label className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">
                   <input type="checkbox" checked={draft.isActive} onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })} className="h-4 w-4 accent-emerald-600" />

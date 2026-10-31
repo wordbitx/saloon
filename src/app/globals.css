@@ -466,6 +466,21 @@ h4:not([class*="text-"]) {
   animation-play-state: paused;
 }
 
+/* The homepage conversation animates inside the phone only. */
+.home-message-enter {
+  animation: messageIn 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .home-message-enter, .typing-dot, .ticker-track, .pulse-dot::after {
+    animation: none;
+  }
+  #mobile-workspace-nav {
+    transition-duration: 0.01ms;
+  }
+}
+
 /* ── Custom Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;

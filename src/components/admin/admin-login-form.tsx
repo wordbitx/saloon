@@ -9,9 +9,11 @@ import { ROLE_DESCRIPTION, ROLE_LABEL, STAFF_ROLES } from "@/lib/auth/roles";
 export default function AdminLoginForm({
   defaultHint,
   signedOutReason,
+  setupWarning,
 }: {
   defaultHint: { email: string; password: string } | null;
   signedOutReason?: string | null;
+  setupWarning?: string | null;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState(defaultHint?.email ?? "");
@@ -93,6 +95,8 @@ export default function AdminLoginForm({
             <strong>Aap ka login band kar diya gaya hai.</strong> Owner se kahein ke wo “Team access” se access wapas on karein.
           </p>
         )}
+
+        {setupWarning && <p role="status" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{setupWarning}</p>}
 
         {defaultHint && (
           <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] leading-relaxed text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">

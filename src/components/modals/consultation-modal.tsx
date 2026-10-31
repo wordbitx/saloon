@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ShieldCheck, Sparkles, X } from "lucide-react";
 import { WORDBITX_COMPANY } from "@/lib/constants";
 
@@ -19,13 +19,59 @@ export default function ConsultationModal({
   const [managerName, setManagerName] = useState("");
   const [phone, setPhone] = useState("");
   const [area, setArea] = useState("DHA Phase 5, Lahore");
-  const [plan, setPlan] = useState(selectedPlanName);
+  const [plan, setPlan] = useState(
+    selectedPlanName.toLowerCase().includes("starter") ? "Starter (PKR 5,000 / mo)" :
+    selectedPlanName.toLowerCase().includes("business") ? "Business Plan (PKR 15,000 / mo)" :
+    "Growth Plan (PKR 10,000 / mo)",
+  );
   const [submitted, setSubmitted] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href]'));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!dialogRef.current.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const subject = encodeURIComponent(`Salon demo enquiry — ${salonName}`);
+    const body = encodeURIComponent(`Salon: ${salonName}\nContact: ${managerName}\nPhone: ${phone}\nArea: ${area}\nInterested plan: ${plan}`);
+    // There is no enquiry backend in this demo. Open the visitor's email app so
+    // they can review and explicitly send the request themselves.
+    window.location.href = `mailto:${WORDBITX_COMPANY.email}?subject=${subject}&body=${body}`;
     setSubmitted(true);
   };
 
@@ -42,12 +88,13 @@ export default function ConsultationModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-[#050d21] border border-slate-200 dark:border-slate-800 p-6 text-slate-800 dark:text-slate-100 shadow-2xl">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-label="Salon enquiry" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div ref={dialogRef} className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 text-slate-800 shadow-2xl dark:border-slate-800 dark:bg-[#050d21] dark:text-slate-100">
         {/* Brand green top accent line */}
         <div className="absolute top-0 left-6 right-6 h-[2.5px] bg-[#1CA830]" />
 
         <button
+          ref={closeRef}
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg transition-colors"
           aria-label="Close modal"
@@ -61,12 +108,10 @@ export default function ConsultationModal({
               <CheckCircle2 className="w-7 h-7" />
             </div>
             <h3 className="text-xl font-bold text-[#052767] dark:text-white">
-              Enquiry Received by WordbitX Lahore!
+              Email draft tayyar hai
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300 max-w-sm mx-auto leading-relaxed">
-              Shukriya {managerName || "ji"}! WordbitX ki salon onboarding team{" "}
-              <strong>24 ghante (hours)</strong> ke andar aap ke salon ({salonName || "Salon"}) ke
-              liye dedicated engineering pipeline activate karegi.
+              {managerName || "Ji"}, apni email app mein draft review karke send karein. Enquiry tabhi bheji jayegi jab aap email send karenge. Agar email app na khuli ho to neeche diye gaye contact par rabta karein.
             </p>
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#071531] border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
               Direct Contact: <strong>{WORDBITX_COMPANY.phonePK}</strong> ·{" "}
@@ -93,17 +138,17 @@ export default function ConsultationModal({
                 Book Salon Engineering Setup
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Phase 1 mein sale direct consultation se hoti hai. Hum 24 ghante ke andar aap ki
-                services aur rates enter kar ke system ready karte hain.
+                Details se aap ki email app mein draft banega. Request bhejne se pehle aap use review kar sakte hain.
               </p>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="enquiry-salon" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Salon Name *
                 </label>
                 <input
+                  id="enquiry-salon"
                   required
                   type="text"
                   value={salonName}
@@ -115,10 +160,11 @@ export default function ConsultationModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="enquiry-manager" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Owner / Manager Name *
                   </label>
                   <input
+                    id="enquiry-manager"
                     required
                     type="text"
                     value={managerName}
@@ -128,10 +174,11 @@ export default function ConsultationModal({
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="enquiry-phone" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     WhatsApp Phone Number *
                   </label>
                   <input
+                    id="enquiry-phone"
                     required
                     type="tel"
                     value={phone}
@@ -144,10 +191,11 @@ export default function ConsultationModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="enquiry-area" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Lahore Area *
                   </label>
                   <select
+                    id="enquiry-area"
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#071531] text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#1CA830]"
@@ -160,10 +208,11 @@ export default function ConsultationModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="enquiry-plan" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Interested Plan
                   </label>
                   <select
+                    id="enquiry-plan"
                     value={plan}
                     onChange={(e) => setPlan(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#071531] text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#1CA830]"
@@ -183,7 +232,7 @@ export default function ConsultationModal({
             <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-[#1CA830] shrink-0" />
               <span>
-                Zero spam guarantee. Official Meta Cloud API pipeline setup within 24 hours.
+                Demo se koi message automatically send nahi hota. Email aap khud send karenge.
               </span>
             </div>
 
@@ -199,7 +248,7 @@ export default function ConsultationModal({
                 type="submit"
                 className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-[#1CA830] hover:bg-[#178e29] shadow-md shadow-emerald-500/20 transition-all active:scale-95"
               >
-                Submit Setup Request (24h SLA)
+                Prepare email enquiry
               </button>
             </div>
           </form>

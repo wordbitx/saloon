@@ -3,6 +3,7 @@ import AdminWorkspace from "@/components/admin/admin-workspace";
 import { AuthProvider } from "@/context/auth-context";
 import { getSessionUser } from "@/lib/auth/session";
 import { getActiveSessionAccount, sessionUserFor } from "@/lib/auth/store";
+import { workspacesFor } from "@/lib/workspaces/store";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,12 @@ export default async function AdminPage() {
   if (!account) redirect("/admin/login?reason=disabled");
 
   const user = await sessionUserFor(account);
+  // Fetch only the salons this account may see; never put owner data in the public demo.
+  const workspaces = await workspacesFor(user);
 
   return (
     <AuthProvider user={user}>
-      <AdminWorkspace />
+      <AdminWorkspace key={`${user.id}-${user.role}-${user.salonId ?? "all"}-${user.branchId ?? "none"}`} initialWorkspaces={workspaces} />
     </AuthProvider>
   );
 }
